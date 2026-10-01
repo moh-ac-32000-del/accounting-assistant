@@ -2,29 +2,22 @@ import { getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-const required = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-} as const;
-
-for (const [key, value] of Object.entries(required)) {
-  if (!value) {
-    throw new Error(`Missing Firebase configuration: ${key}`);
-  }
-}
-
+/**
+ * Firebase Web configuration.
+ *
+ * Firebase Web API keys are public identifiers by design. Security is enforced
+ * by Firebase Authentication, Firestore Security Rules, and (later) App Check.
+ *
+ * Do not put service-account private keys or other server secrets in this file.
+ */
 const firebaseConfig = {
-  apiKey: required.apiKey,
-  authDomain: required.authDomain,
-  projectId: required.projectId,
-  storageBucket: required.storageBucket,
-  messagingSenderId: required.messagingSenderId,
-  appId: required.appId,
-};
+  apiKey: "AIzaSyBSmHBsKOBChOGbLd9HhOTHp4oW4IlzSzo",
+  authDomain: "accounting-assistant-d291a.firebaseapp.com",
+  projectId: "accounting-assistant-d291a",
+  storageBucket: "accounting-assistant-d291a.firebasestorage.app",
+  messagingSenderId: "880964968010",
+  appId: "1:880964968010:web:e5071553bf27c4614c50b3",
+} as const;
 
 export const firebaseApp =
   getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
