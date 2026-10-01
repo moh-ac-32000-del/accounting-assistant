@@ -11,7 +11,10 @@
       }
     },
     "production": {
-      "distribution": "store"
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   }
 }
