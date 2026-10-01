@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Accounting Assistant",
+    "slug": "accounting-assistant",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "accountingassistant",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "android": {
+      "package": "com.accountingassistant.app"
+    },
+    "ios": {
+      "bundleIdentifier": "com.accountingassistant.app"
+    },
+    "web": {
+      "output": "static"
+    }
+  }
+}
