@@ -1,9 +1,11 @@
 import {
   createUserWithEmailAndPassword,
+  onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  type User,
 } from "firebase/auth";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,13 +15,42 @@ import {
   View,
 } from "react-native";
 import { firebaseAuth } from "@/lib/firebase";
+import {
+  createWorkspaceForCurrentUser,
+  getActiveWorkspaceForCurrentUser,
+  type WorkspaceSummary,
+} from "@/lib/workspace";
 
 export default function HomeScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [workspaceName, setWorkspaceName] = useState("متجري");
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [message, setMessage] = useState("");
+  const [currentUser, setCurrentUser] = useState<User | null>(
+    firebaseAuth.currentUser,
+  );
+  const [workspace, setWorkspace] = useState<WorkspaceSummary | null>(null);
+
+  useEffect(() => {
+    return onAuthStateChanged(firebaseAuth, async (user) => {
+      setCurrentUser(user);
+      setWorkspace(null);
+
+      if (!user) {
+        return;
+      }
+
+      try {
+        const activeWorkspace = await getActiveWorkspaceForCurrentUser(user.uid);
+        setWorkspace(activeWorkspace);
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "unknown-error";
+        setMessage(`تعذر قراءة مساحة العمل: ${code}`);
+      }
+    });
+  }, []);
 
   const submit = async () => {
     setMessage("");
@@ -28,7 +59,11 @@ export default function HomeScreen() {
     try {
       const credential =
         mode === "login"
-          ? await signInWithEmailAndPassword(firebaseAuth, email.trim(), password)
+          ? await signInWithEmailAndPassword(
+              firebaseAuth,
+              email.trim(),
+              password,
+            )
           : await createUserWithEmailAndPassword(
               firebaseAuth,
               email.trim(),
@@ -44,24 +79,82 @@ export default function HomeScreen() {
     }
   };
 
+  const createWorkspace = async () => {
+    if (!currentUser) {
+      return;
+    }
+
+    setMessage("");
+    setBusy(true);
+
+    try {
+      const created = await createWorkspaceForCurrentUser(
+        currentUser.uid,
+        workspaceName,
+      );
+      setWorkspace(created);
+      setMessage(`تم إنشاء مساحة العمل بنجاح. ID: ${created.id}`);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "unknown-error";
+      setMessage(`فشل إنشاء مساحة العمل: ${code}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const logout = async () => {
     await signOut(firebaseAuth);
     setMessage("تم تسجيل الخروج.");
   };
 
-  const currentUser = firebaseAuth.currentUser;
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Accounting Assistant</Text>
-      <Text style={styles.subtitle}>اختبار الاتصال بـ Firebase</Text>
+      <Text style={styles.subtitle}>أساس الحساب السحابي</Text>
 
       {currentUser ? (
         <View style={styles.card}>
           <Text style={styles.success}>Firebase يعمل بنجاح</Text>
           <Text style={styles.uid}>UID: {currentUser.uid}</Text>
-          <Pressable style={styles.button} onPress={logout}>
-            <Text style={styles.buttonText}>تسجيل الخروج</Text>
+
+          {workspace ? (
+            <View style={styles.workspaceBox}>
+              <Text style={styles.workspaceTitle}>مساحة العمل</Text>
+              <Text style={styles.workspaceName}>{workspace.name}</Text>
+              <Text style={styles.workspaceMeta}>
+                الدور: {workspace.role} • ID: {workspace.id}
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.sectionTitle}>إنشاء مساحة العمل الأولى</Text>
+              <TextInput
+                value={workspaceName}
+                onChangeText={setWorkspaceName}
+                placeholder="اسم المتجر"
+                placeholderTextColor="#7f8790"
+                style={styles.input}
+              />
+              <Pressable
+                style={[styles.button, busy && styles.disabled]}
+                onPress={createWorkspace}
+                disabled={busy}
+              >
+                {busy ? (
+                  <ActivityIndicator color="#111315" />
+                ) : (
+                  <Text style={styles.buttonText}>إنشاء مساحة العمل</Text>
+                )}
+              </Pressable>
+            </>
+          )}
+
+          <Pressable
+            style={[styles.secondaryButton, busy && styles.disabled]}
+            onPress={logout}
+            disabled={busy}
+          >
+            <Text style={styles.secondaryButtonText}>تسجيل الخروج</Text>
           </Pressable>
         </View>
       ) : (
@@ -91,7 +184,7 @@ export default function HomeScreen() {
             disabled={busy}
           >
             {busy ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color="#111315" />
             ) : (
               <Text style={styles.buttonText}>
                 {mode === "login" ? "تسجيل الدخول" : "إنشاء حساب اختبار"}
@@ -165,6 +258,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#d4a72c",
     marginTop: 4,
   },
+  secondaryButton: {
+    minHeight: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#252a30",
+    marginTop: 12,
+  },
   disabled: {
     opacity: 0.65,
   },
@@ -172,6 +273,11 @@ const styles = StyleSheet.create({
     color: "#111315",
     fontSize: 16,
     fontWeight: "700",
+  },
+  secondaryButtonText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "600",
   },
   link: {
     color: "#d4a72c",
@@ -189,6 +295,40 @@ const styles = StyleSheet.create({
     color: "#aeb4bb",
     fontSize: 12,
     marginTop: 12,
+    textAlign: "center",
+  },
+  sectionTitle: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 20,
+    marginBottom: 12,
+    textAlign: "right",
+  },
+  workspaceBox: {
+    marginTop: 20,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#3a4048",
+    backgroundColor: "#111315",
+  },
+  workspaceTitle: {
+    color: "#d4a72c",
+    fontSize: 13,
+    textAlign: "center",
+  },
+  workspaceName: {
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 6,
+    textAlign: "center",
+  },
+  workspaceMeta: {
+    color: "#aeb4bb",
+    fontSize: 11,
+    marginTop: 8,
     textAlign: "center",
   },
   message: {
