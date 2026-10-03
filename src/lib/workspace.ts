@@ -2,12 +2,8 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
-  limit,
-  query,
   serverTimestamp,
   writeBatch,
-  where,
 } from "firebase/firestore";
 import { firestoreDb } from "@/lib/firebase";
 
@@ -101,62 +97,40 @@ export async function getActiveWorkspaceForCurrentUser(
 ): Promise<WorkspaceSummary | null> {
   const userSnapshot = await getDoc(doc(firestoreDb, "users", uid));
 
-  if (userSnapshot.exists()) {
-    const activeWorkspaceId = userSnapshot.data().activeWorkspaceId;
-
-    if (typeof activeWorkspaceId === "string" && activeWorkspaceId) {
-      const workspaceSnapshot = await getDoc(
-        doc(firestoreDb, "workspaces", activeWorkspaceId),
-      );
-
-      if (workspaceSnapshot.exists()) {
-        const workspace = workspaceSnapshot.data() as WorkspaceDoc;
-        const memberSnapshot = await getDoc(
-          doc(firestoreDb, "workspaces", activeWorkspaceId, "members", uid),
-        );
-
-        if (memberSnapshot.exists()) {
-          const member = memberSnapshot.data() as MembershipDoc;
-
-          return {
-            id: workspaceSnapshot.id,
-            name: workspace.name,
-            ownerUid: workspace.ownerUid,
-            status: workspace.status,
-            role: member.role,
-          };
-        }
-      }
-    }
+  if (!userSnapshot.exists()) {
+    return null;
   }
 
-  const memberships = await getDocs(
-    query(
-      collection(firestoreDb, "workspaces"),
-      limit(1),
-    ),
+  const activeWorkspaceId = userSnapshot.data().activeWorkspaceId;
+
+  if (typeof activeWorkspaceId !== "string" || !activeWorkspaceId) {
+    return null;
+  }
+
+  const workspaceSnapshot = await getDoc(
+    doc(firestoreDb, "workspaces", activeWorkspaceId),
   );
 
-  if (!memberships.empty) {
-    for (const workspaceSnapshot of memberships.docs) {
-      const memberSnapshot = await getDoc(
-        doc(firestoreDb, "workspaces", workspaceSnapshot.id, "members", uid),
-      );
-
-      if (memberSnapshot.exists()) {
-        const workspace = workspaceSnapshot.data() as WorkspaceDoc;
-        const member = memberSnapshot.data() as MembershipDoc;
-
-        return {
-          id: workspaceSnapshot.id,
-          name: workspace.name,
-          ownerUid: workspace.ownerUid,
-          status: workspace.status,
-          role: member.role,
-        };
-      }
-    }
+  if (!workspaceSnapshot.exists()) {
+    return null;
   }
 
-  return null;
+  const memberSnapshot = await getDoc(
+    doc(firestoreDb, "workspaces", activeWorkspaceId, "members", uid),
+  );
+
+  if (!memberSnapshot.exists()) {
+    return null;
+  }
+
+  const workspace = workspaceSnapshot.data() as WorkspaceDoc;
+  const member = memberSnapshot.data() as MembershipDoc;
+
+  return {
+    id: workspaceSnapshot.id,
+    name: workspace.name,
+    ownerUid: workspace.ownerUid,
+    status: workspace.status,
+    role: member.role,
+  };
 }
