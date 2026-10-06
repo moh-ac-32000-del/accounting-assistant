@@ -62,7 +62,9 @@ service cloud.firestore {
           && request.resource.data.role == "owner"
           && request.resource.data.status == "active"
           && request.resource.data.schemaVersion == 1
+          && existsAfter(workspacePath(workspaceId))
           && getAfter(workspacePath(workspaceId)).data.ownerUid == request.auth.uid
+          && existsAfter(userPath(request.auth.uid))
           && getAfter(userPath(request.auth.uid)).data.activeWorkspaceId == workspaceId;
         allow update: if isOwner(workspaceId)
           && memberUid != request.auth.uid
