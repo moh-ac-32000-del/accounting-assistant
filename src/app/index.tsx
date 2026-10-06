@@ -43,7 +43,7 @@ export default function HomeScreen() {
       }
 
       try {
-        const activeWorkspace = await getActiveWorkspaceForCurrentUser(user.uid);
+        const activeWorkspace = await getActiveWorkspaceForCurrentUser();
         setWorkspace(activeWorkspace);
       } catch (error) {
         const code = error instanceof Error ? error.message : "unknown-error";
@@ -88,10 +88,7 @@ export default function HomeScreen() {
     setBusy(true);
 
     try {
-      const created = await createWorkspaceForCurrentUser(
-        currentUser.uid,
-        workspaceName,
-      );
+      const created = await createWorkspaceForCurrentUser(workspaceName);
       setWorkspace(created);
       setMessage(`تم إنشاء مساحة العمل بنجاح. ID: ${created.id}`);
     } catch (error) {
