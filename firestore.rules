@@ -6,59 +6,95 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function memberPath(workspaceId, userId) {
+      return /databases/$(database)/documents/workspaces/$(workspaceId)/members/$(userId);
+    }
+
+    function userPath(userId) {
+      return /databases/$(database)/documents/users/$(userId);
+    }
+
+    function workspacePath(workspaceId) {
+      return /databases/$(database)/documents/workspaces/$(workspaceId);
+    }
+
     function isMember(workspaceId) {
       return signedIn()
-        && exists(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid))
-        && get(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid)).data.status == "active";
+        && exists(memberPath(workspaceId, request.auth.uid))
+        && get(memberPath(workspaceId, request.auth.uid)).data.status == "active";
     }
 
     function isOwner(workspaceId) {
       return isMember(workspaceId)
-        && get(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid)).data.role == "owner";
+        && get(memberPath(workspaceId, request.auth.uid)).data.role == "owner";
     }
 
     match /users/{userId} {
       allow read: if signedIn() && request.auth.uid == userId;
+
       allow create: if signedIn()
         && request.auth.uid == userId
         && request.resource.data.uid == userId
         && request.resource.data.schemaVersion == 1
         && request.resource.data.activeWorkspaceId is string
-        && getAfter(/databases/$(database)/documents/workspaces/$(request.resource.data.activeWorkspaceId)).data.ownerUid == userId;
+        && getAfter(workspacePath(request.resource.data.activeWorkspaceId)).data.ownerUid == userId;
+
       allow update: if signedIn()
         && request.auth.uid == userId
         && request.resource.data.uid == resource.data.uid
-        && request.resource.data.schemaVersion == resource.data.schemaVersion;
+        && request.resource.data.schemaVersion == resource.data.schemaVersion
+        && request.resource.data.activeWorkspaceId is string
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "activeWorkspaceId",
+          "updatedAt"
+        ])
+        && (
+          request.resource.data.activeWorkspaceId == resource.data.activeWorkspaceId
+          || (
+            exists(memberPath(request.resource.data.activeWorkspaceId, userId))
+            && get(memberPath(request.resource.data.activeWorkspaceId, userId)).data.uid == userId
+            && get(memberPath(request.resource.data.activeWorkspaceId, userId)).data.status == "active"
+          )
+        );
+
       allow delete: if false;
     }
 
     match /workspaces/{workspaceId} {
       allow create: if signedIn()
         && request.resource.data.schemaVersion == 1
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.status == "active"
-        && getAfter(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid)).data.role == "owner"
-        && getAfter(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid)).data.status == "active"
-        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.activeWorkspaceId == workspaceId;
+        && getAfter(memberPath(workspaceId, request.auth.uid)).data.role == "owner"
+        && getAfter(memberPath(workspaceId, request.auth.uid)).data.status == "active"
+        && getAfter(userPath(request.auth.uid)).data.activeWorkspaceId == workspaceId;
+
       allow read: if isMember(workspaceId);
+
       allow update: if isOwner(workspaceId)
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.schemaVersion == resource.data.schemaVersion;
+
       allow delete: if false;
 
       match /members/{memberUid} {
         allow read: if isMember(workspaceId);
+
         allow create: if signedIn()
           && memberUid == request.auth.uid
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.role == "owner"
           && request.resource.data.status == "active"
           && request.resource.data.schemaVersion == 1
-          && getAfter(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerUid == request.auth.uid
-          && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.activeWorkspaceId == workspaceId;
+          && getAfter(workspacePath(workspaceId)).data.ownerUid == request.auth.uid
+          && getAfter(userPath(request.auth.uid)).data.activeWorkspaceId == workspaceId;
+
         allow update: if isOwner(workspaceId)
           && request.resource.data.uid == resource.data.uid
-          && request.resource.data.schemaVersion == resource.data.schemaVersion;
+          && request.resource.data.schemaVersion == resource.schemaVersion;
+
         allow delete: if false;
       }
     }
