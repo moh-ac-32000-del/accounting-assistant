@@ -5,7 +5,7 @@ import {
   serverTimestamp,
   writeBatch,
 } from "firebase/firestore";
-import { firestoreDb } from "@/lib/firebase";
+import { firebaseAuth, firestoreDb } from "@/lib/firebase";
 
 export type WorkspaceRole = "owner" | "admin" | "staff";
 
@@ -34,10 +34,20 @@ type MembershipDoc = {
   createdAt: unknown;
 };
 
+function requireCurrentUserUid(): string {
+  const uid = firebaseAuth.currentUser?.uid;
+
+  if (!uid) {
+    throw new Error("unauthenticated");
+  }
+
+  return uid;
+}
+
 export async function createWorkspaceForCurrentUser(
-  uid: string,
   name: string,
 ): Promise<WorkspaceSummary> {
+  const uid = requireCurrentUserUid();
   const trimmedName = name.trim();
 
   if (!trimmedName) {
@@ -92,9 +102,8 @@ export async function createWorkspaceForCurrentUser(
   };
 }
 
-export async function getActiveWorkspaceForCurrentUser(
-  uid: string,
-): Promise<WorkspaceSummary | null> {
+export async function getActiveWorkspaceForCurrentUser(): Promise<WorkspaceSummary | null> {
+  const uid = requireCurrentUserUid();
   const userSnapshot = await getDoc(doc(firestoreDb, "users", uid));
 
   if (!userSnapshot.exists()) {
