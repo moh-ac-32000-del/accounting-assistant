@@ -26,7 +26,7 @@ service cloud.firestore {
         && (
           request.resource.data.activeWorkspaceId == resource.data.activeWorkspaceId
           || (
-            getAfter(memberPath(request.resource.data.activeWorkspaceId, userId)).data.uid == userId
+            existsAfter(memberPath(request.resource.data.activeWorkspaceId, userId)) && getAfter(memberPath(request.resource.data.activeWorkspaceId, userId)).data.uid == userId
             && getAfter(memberPath(request.resource.data.activeWorkspaceId, userId)).data.status == "active"
           )
         );
@@ -40,8 +40,10 @@ service cloud.firestore {
         && request.resource.data.name.size() > 0
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.status == "active"
+        && existsAfter(memberPath(workspaceId, request.auth.uid))
         && getAfter(memberPath(workspaceId, request.auth.uid)).data.role == "owner"
         && getAfter(memberPath(workspaceId, request.auth.uid)).data.status == "active"
+        && existsAfter(userPath(request.auth.uid))
         && getAfter(userPath(request.auth.uid)).data.activeWorkspaceId == workspaceId;
       allow read: if isMember(workspaceId);
       allow update: if isOwner(workspaceId)
