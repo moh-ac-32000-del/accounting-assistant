@@ -2,6 +2,13 @@ name: Firestore Rules Tests
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "firestore.rules"
+      - "scripts/test-firestore-rules.mjs"
+      - "firebase.json"
+      - "package.json"
+      - ".github/workflows/firestore-rules-tests.yml"
 
 jobs:
   rules:
