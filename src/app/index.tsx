@@ -15,7 +15,12 @@ import {
   View,
 } from "react-native";
 import { firebaseAuth } from "@/lib/firebase";
-import { getStoreProfile, saveStoreProfile, type StoreCurrency, type StoreLanguage } from "@/lib/store-profile";
+import { isRTL, t, type AppLanguage } from "@/lib/i18n";
+import {
+  getStoreProfile,
+  saveStoreProfile,
+  type StoreCurrency,
+} from "@/lib/store-profile";
 import {
   createWorkspaceForCurrentUser,
   getActiveWorkspaceForCurrentUser,
@@ -37,24 +42,26 @@ export default function HomeScreen() {
   const [storePhone, setStorePhone] = useState("");
   const [storeAddress, setStoreAddress] = useState("");
   const [storeCurrency, setStoreCurrency] = useState<StoreCurrency>("TRY");
-  const [storeLanguage, setStoreLanguage] = useState<StoreLanguage>("ar");
+  const [storeLanguage, setStoreLanguage] = useState<AppLanguage>("ar");
   const [profileSaved, setProfileSaved] = useState(false);
+
+  const rtl = isRTL(storeLanguage);
 
   useEffect(() => {
     return onAuthStateChanged(firebaseAuth, async (user) => {
       setCurrentUser(user);
       setWorkspace(null);
 
-      if (!user) {
-        return;
-      }
+      if (!user) return;
 
       try {
         const activeWorkspace = await getActiveWorkspaceForCurrentUser();
         setWorkspace(activeWorkspace);
+
         if (activeWorkspace) {
           try {
             const profile = await getStoreProfile(activeWorkspace.id);
+
             if (profile) {
               setStoreName(profile.name);
               setStorePhone(profile.phone);
@@ -65,13 +72,16 @@ export default function HomeScreen() {
               setStoreName(activeWorkspace.name);
             }
           } catch (profileError) {
-            const code = profileError instanceof Error ? profileError.message : "unknown-error";
-            setMessage(`تعذر قراءة بيانات المتجر: ${code}`);
+            const code =
+              profileError instanceof Error
+                ? profileError.message
+                : "unknown-error";
+            setMessage(`${t(storeLanguage, "profileReadFailed")}: ${code}`);
           }
         }
       } catch (error) {
         const code = error instanceof Error ? error.message : "unknown-error";
-        setMessage(`تعذر قراءة مساحة العمل: ${code}`);
+        setMessage(`${t(storeLanguage, "workspaceReadFailed")}: ${code}`);
       }
     });
   }, []);
@@ -94,19 +104,19 @@ export default function HomeScreen() {
               password,
             );
 
-      setMessage(`تم الاتصال بـ Firebase بنجاح. UID: ${credential.user.uid}`);
+      setMessage(
+        `${t(storeLanguage, "authSuccess")}. UID: ${credential.user.uid}`,
+      );
     } catch (error) {
       const code = error instanceof Error ? error.message : "unknown-error";
-      setMessage(`فشل الاتصال أو المصادقة: ${code}`);
+      setMessage(`${t(storeLanguage, "authFailed")}: ${code}`);
     } finally {
       setBusy(false);
     }
   };
 
   const createWorkspace = async () => {
-    if (!currentUser) {
-      return;
-    }
+    if (!currentUser) return;
 
     setMessage("");
     setBusy(true);
@@ -114,10 +124,11 @@ export default function HomeScreen() {
     try {
       const created = await createWorkspaceForCurrentUser(workspaceName);
       setWorkspace(created);
-      setMessage(`تم إنشاء مساحة العمل بنجاح. ID: ${created.id}`);
+      setStoreName(created.name);
+      setMessage(`${t(storeLanguage, "createWorkspace")} • ID: ${created.id}`);
     } catch (error) {
       const code = error instanceof Error ? error.message : "unknown-error";
-      setMessage(`فشل إنشاء مساحة العمل: ${code}`);
+      setMessage(`${t(storeLanguage, "workspaceCreateFailed")}: ${code}`);
     } finally {
       setBusy(false);
     }
@@ -125,75 +136,201 @@ export default function HomeScreen() {
 
   const logout = async () => {
     await signOut(firebaseAuth);
-    setMessage("تم تسجيل الخروج.");
+    setMessage("");
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Accounting Assistant</Text>
-      <Text style={styles.subtitle}>أساس الحساب السحابي</Text>
+    <View style={[styles.container, { direction: rtl ? "rtl" : "ltr" }]}>
+      <Text style={styles.title}>{t(storeLanguage, "title")}</Text>
+      <Text style={styles.subtitle}>{t(storeLanguage, "subtitle")}</Text>
 
       {currentUser ? (
         <View style={styles.card}>
-          <Text style={styles.success}>Firebase يعمل بنجاح</Text>
+          <Text style={styles.success}>{t(storeLanguage, "firebaseOk")}</Text>
           <Text style={styles.uid}>UID: {currentUser.uid}</Text>
 
           {workspace ? (
             <>
               <View style={styles.workspaceBox}>
-              <Text style={styles.workspaceTitle}>مساحة العمل</Text>
-              <Text style={styles.workspaceName}>{workspace.name}</Text>
-              <Text style={styles.workspaceMeta}>
-                الدور: {workspace.role} • ID: {workspace.id}
-              </Text>
-            </View>
+                <Text style={[styles.workspaceTitle, { textAlign: rtl ? "right" : "left" }]}>
+                  {t(storeLanguage, "workspace")}
+                </Text>
+                <Text style={styles.workspaceName}>{workspace.name}</Text>
+                <Text style={styles.workspaceMeta}>
+                  {t(storeLanguage, "role")}: {workspace.role} •{" "}
+                  {t(storeLanguage, "id")}: {workspace.id}
+                </Text>
+              </View>
 
-            <View style={styles.profileBox}>
-              <Text style={styles.sectionTitle}>بيانات المتجر</Text>
-              <TextInput value={storeName} onChangeText={setStoreName} placeholder="اسم المتجر" placeholderTextColor="#7f8790" style={styles.input} />
-              <TextInput value={storePhone} onChangeText={setStorePhone} placeholder="رقم الهاتف" placeholderTextColor="#7f8790" keyboardType="phone-pad" style={styles.input} />
-              <TextInput value={storeAddress} onChangeText={setStoreAddress} placeholder="العنوان" placeholderTextColor="#7f8790" style={styles.input} />
-              <View style={styles.optionRow}>
-                <Pressable style={[styles.option, storeCurrency === "TRY" && styles.optionSelected]} onPress={() => setStoreCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
-                <Pressable style={[styles.option, storeCurrency === "USD" && styles.optionSelected]} onPress={() => setStoreCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
+              <View style={styles.profileBox}>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    { textAlign: rtl ? "right" : "left" },
+                  ]}
+                >
+                  {t(storeLanguage, "storeData")}
+                </Text>
+
+                <TextInput
+                  value={storeName}
+                  onChangeText={setStoreName}
+                  placeholder={t(storeLanguage, "storeName")}
+                  placeholderTextColor="#7f8790"
+                  style={[
+                    styles.input,
+                    { textAlign: rtl ? "right" : "left" },
+                  ]}
+                />
+
+                <TextInput
+                  value={storePhone}
+                  onChangeText={setStorePhone}
+                  placeholder={t(storeLanguage, "phone")}
+                  placeholderTextColor="#7f8790"
+                  keyboardType="phone-pad"
+                  style={[
+                    styles.input,
+                    { textAlign: rtl ? "right" : "left" },
+                  ]}
+                />
+
+                <TextInput
+                  value={storeAddress}
+                  onChangeText={setStoreAddress}
+                  placeholder={t(storeLanguage, "address")}
+                  placeholderTextColor="#7f8790"
+                  style={[
+                    styles.input,
+                    { textAlign: rtl ? "right" : "left" },
+                  ]}
+                />
+
+                <View style={styles.optionRow}>
+                  <Pressable
+                    style={[
+                      styles.option,
+                      storeCurrency === "TRY" && styles.optionSelected,
+                    ]}
+                    onPress={() => setStoreCurrency("TRY")}
+                  >
+                    <Text style={styles.optionText}>TRY</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.option,
+                      storeCurrency === "USD" && styles.optionSelected,
+                    ]}
+                    onPress={() => setStoreCurrency("USD")}
+                  >
+                    <Text style={styles.optionText}>USD</Text>
+                  </Pressable>
+                </View>
+
+                <View style={styles.optionRow}>
+                  <Pressable
+                    style={[
+                      styles.option,
+                      storeLanguage === "ar" && styles.optionSelected,
+                    ]}
+                    onPress={() => {
+                      setStoreLanguage("ar");
+                      setProfileSaved(false);
+                    }}
+                  >
+                    <Text style={styles.optionText}>العربية</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.option,
+                      storeLanguage === "tr" && styles.optionSelected,
+                    ]}
+                    onPress={() => {
+                      setStoreLanguage("tr");
+                      setProfileSaved(false);
+                    }}
+                  >
+                    <Text style={styles.optionText}>Türkçe</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.option,
+                      storeLanguage === "en" && styles.optionSelected,
+                    ]}
+                    onPress={() => {
+                      setStoreLanguage("en");
+                      setProfileSaved(false);
+                    }}
+                  >
+                    <Text style={styles.optionText}>English</Text>
+                  </Pressable>
+                </View>
+
+                <Pressable
+                  style={[styles.button, busy && styles.disabled]}
+                  disabled={busy || workspace.role === "staff"}
+                  onPress={async () => {
+                    setBusy(true);
+                    setProfileSaved(false);
+
+                    try {
+                      await saveStoreProfile(workspace.id, {
+                        name: storeName,
+                        phone: storePhone,
+                        address: storeAddress,
+                        currency: storeCurrency,
+                        language: storeLanguage,
+                      });
+                      setProfileSaved(true);
+                    } catch (error) {
+                      const code =
+                        error instanceof Error
+                          ? error.message
+                          : "unknown-error";
+                      setMessage(
+                        `${t(storeLanguage, "profileSaveFailed")}: ${code}`,
+                      );
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  <Text style={styles.buttonText}>
+                    {busy
+                      ? t(storeLanguage, "saving")
+                      : t(storeLanguage, "saveStore")}
+                  </Text>
+                </Pressable>
+
+                {profileSaved && (
+                  <Text style={styles.saved}>
+                    {t(storeLanguage, "saved")}
+                  </Text>
+                )}
               </View>
-              <View style={styles.optionRow}>
-                <Pressable style={[styles.option, storeLanguage === "ar" && styles.optionSelected]} onPress={() => setStoreLanguage("ar")}><Text style={styles.optionText}>العربية</Text></Pressable>
-                <Pressable style={[styles.option, storeLanguage === "tr" && styles.optionSelected]} onPress={() => setStoreLanguage("tr")}><Text style={styles.optionText}>Türkçe</Text></Pressable>
-                <Pressable style={[styles.option, storeLanguage === "en" && styles.optionSelected]} onPress={() => setStoreLanguage("en")}><Text style={styles.optionText}>English</Text></Pressable>
-              </View>
-              <Pressable
-                style={[styles.button, busy && styles.disabled]}
-                disabled={busy || workspace.role === "staff"}
-                onPress={async () => {
-                  setBusy(true);
-                  setProfileSaved(false);
-                  try {
-                    await saveStoreProfile(workspace.id, { name: storeName, phone: storePhone, address: storeAddress, currency: storeCurrency, language: storeLanguage });
-                    setProfileSaved(true);
-                  } catch (error) {
-                    const code = error instanceof Error ? error.message : "unknown-error";
-                    setMessage(`فشل حفظ بيانات المتجر: ${code}`);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                <Text style={styles.buttonText}>{busy ? "جارٍ الحفظ..." : "حفظ بيانات المتجر"}</Text>
-              </Pressable>
-              {profileSaved && <Text style={styles.saved}>تم حفظ بيانات المتجر</Text>}
-            </View>
             </>
           ) : (
             <>
-              <Text style={styles.sectionTitle}>إنشاء مساحة العمل الأولى</Text>
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { textAlign: rtl ? "right" : "left" },
+                ]}
+              >
+                {t(storeLanguage, "firstWorkspace")}
+              </Text>
+
               <TextInput
                 value={workspaceName}
                 onChangeText={setWorkspaceName}
-                placeholder="اسم المتجر"
+                placeholder={t(storeLanguage, "storeName")}
                 placeholderTextColor="#7f8790"
-                style={styles.input}
+                style={[
+                  styles.input,
+                  { textAlign: rtl ? "right" : "left" },
+                ]}
               />
+
               <Pressable
                 style={[styles.button, busy && styles.disabled]}
                 onPress={createWorkspace}
@@ -202,7 +339,9 @@ export default function HomeScreen() {
                 {busy ? (
                   <ActivityIndicator color="#111315" />
                 ) : (
-                  <Text style={styles.buttonText}>إنشاء مساحة العمل</Text>
+                  <Text style={styles.buttonText}>
+                    {t(storeLanguage, "createWorkspace")}
+                  </Text>
                 )}
               </Pressable>
             </>
@@ -213,7 +352,9 @@ export default function HomeScreen() {
             onPress={logout}
             disabled={busy}
           >
-            <Text style={styles.secondaryButtonText}>تسجيل الخروج</Text>
+            <Text style={styles.secondaryButtonText}>
+              {t(storeLanguage, "logout")}
+            </Text>
           </Pressable>
         </View>
       ) : (
@@ -221,20 +362,20 @@ export default function HomeScreen() {
           <TextInput
             value={email}
             onChangeText={setEmail}
-            placeholder="البريد الإلكتروني"
+            placeholder={t(storeLanguage, "email")}
             placeholderTextColor="#7f8790"
             autoCapitalize="none"
             keyboardType="email-address"
-            style={styles.input}
+            style={[styles.input, { textAlign: rtl ? "right" : "left" }]}
           />
 
           <TextInput
             value={password}
             onChangeText={setPassword}
-            placeholder="كلمة المرور"
+            placeholder={t(storeLanguage, "password")}
             placeholderTextColor="#7f8790"
             secureTextEntry
-            style={styles.input}
+            style={[styles.input, { textAlign: rtl ? "right" : "left" }]}
           />
 
           <Pressable
@@ -246,7 +387,9 @@ export default function HomeScreen() {
               <ActivityIndicator color="#111315" />
             ) : (
               <Text style={styles.buttonText}>
-                {mode === "login" ? "تسجيل الدخول" : "إنشاء حساب اختبار"}
+                {mode === "login"
+                  ? t(storeLanguage, "login")
+                  : t(storeLanguage, "createTestAccount")}
               </Text>
             )}
           </Pressable>
@@ -259,8 +402,8 @@ export default function HomeScreen() {
           >
             <Text style={styles.link}>
               {mode === "login"
-                ? "ليس لديك حساب؟ إنشاء حساب اختبار"
-                : "لديك حساب؟ تسجيل الدخول"}
+                ? t(storeLanguage, "noAccount")
+                : t(storeLanguage, "haveAccount")}
             </Text>
           </Pressable>
         </View>
@@ -307,7 +450,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     backgroundColor: "#111315",
     marginBottom: 12,
-    textAlign: "left",
   },
   button: {
     minHeight: 52,
@@ -362,7 +504,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 20,
     marginBottom: 12,
-    textAlign: "right",
   },
   workspaceBox: {
     marginTop: 20,
@@ -375,7 +516,6 @@ const styles = StyleSheet.create({
   workspaceTitle: {
     color: "#d4a72c",
     fontSize: 13,
-    textAlign: "center",
   },
   workspaceName: {
     color: "#ffffff",
