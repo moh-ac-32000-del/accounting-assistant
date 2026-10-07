@@ -139,6 +139,45 @@ service cloud.firestore {
       }
     }
 
+    match /workspaces/{workspaceId}/customers/{customerId} {
+      allow read: if isCurrentUserMember(workspaceId);
+
+      allow create: if isCurrentUserMember(workspaceId)
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.workspaceId == workspaceId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.phone is string
+        && request.resource.data.address is string
+        && request.resource.data.notes is string
+        && request.resource.data.status == "active"
+        && request.resource.data.createdByUid == request.auth.uid;
+
+      allow update: if isCurrentUserMember(workspaceId)
+        && request.resource.data.schemaVersion == resource.data.schemaVersion
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && request.resource.data.createdByUid == resource.data.createdByUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.phone is string
+        && request.resource.data.address is string
+        && request.resource.data.notes is string
+        && request.resource.data.status in ["active", "archived"]
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "name",
+          "phone",
+          "address",
+          "notes",
+          "status",
+          "updatedByUid",
+          "updatedAt"
+        ])
+        && request.resource.data.updatedByUid == request.auth.uid;
+
+      allow delete: if false;
+    }
+
     match /workspaces/{workspaceId}/storeProfile/{profileId} {
       allow read: if isCurrentUserMember(workspaceId);
 
