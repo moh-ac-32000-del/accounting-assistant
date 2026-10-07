@@ -30,6 +30,13 @@ service cloud.firestore {
       return isActiveMember(workspaceId, request.auth.uid);
     }
 
+    function isActiveMemberAfter(workspaceId, uid) {
+      return signedIn()
+        && existsAfter(memberPath(workspaceId, uid))
+        && getAfter(memberPath(workspaceId, uid)).data.uid == uid
+        && getAfter(memberPath(workspaceId, uid)).data.status == "active";
+    }
+
     function isOwner(workspaceId) {
       return isCurrentUserMember(workspaceId)
         && get(memberPath(workspaceId, request.auth.uid)).data.role == "owner";
@@ -69,7 +76,7 @@ service cloud.firestore {
         && request.resource.data.activeWorkspaceId is string
         && (
           request.resource.data.activeWorkspaceId == resource.data.activeWorkspaceId
-          || isActiveMember(request.resource.data.activeWorkspaceId, userId)
+          || isActiveMemberAfter(request.resource.data.activeWorkspaceId, userId)
         );
 
       allow delete: if false;
@@ -95,7 +102,7 @@ service cloud.firestore {
 
       allow update: if isOwner(workspaceId)
         && request.resource.data.ownerUid == resource.data.ownerUid
-        && request.resource.data.schemaVersion == resource.schemaVersion
+        && request.resource.data.schemaVersion == resource.data.schemaVersion
         && request.resource.data.status == resource.data.status
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name", "updatedAt"])
         && request.resource.data.name is string

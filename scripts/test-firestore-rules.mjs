@@ -90,6 +90,10 @@ try {
   await assertFails(updateDoc(doc(aliceDb, "users", aliceUid), { uid: "different-user" }));
   await assertFails(updateDoc(doc(aliceDb, "users", aliceUid), { schemaVersion: 2 }));
 
+  await assertFails(getDoc(doc(aliceDb, "customers", "future-customer")));
+  await assertFails(getDoc(doc(aliceDb, "debts", "future-debt")));
+  await assertFails(getDoc(doc(aliceDb, "payments", "future-payment")));
+
   console.log("Firestore Security Rules tests passed.");
 } finally {
   await testEnv.cleanup();
