@@ -95,7 +95,7 @@ service cloud.firestore {
 
       allow update: if isOwner(workspaceId)
         && request.resource.data.ownerUid == resource.data.ownerUid
-        && request.resource.data.schemaVersion == resource.schemaVersion
+        && request.resource.data.schemaVersion == resource.data.schemaVersion
         && request.resource.data.status == resource.data.status
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name", "updatedAt"])
         && request.resource.data.name is string
