@@ -2,34 +2,76 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function memberPath(workspaceId, userId) { return /databases/$(database)/documents/workspaces/$(workspaceId)/members/$(userId); }
-    function userPath(userId) { return /databases/$(database)/documents/users/$(userId); }
-    function workspacePath(workspaceId) { return /databases/$(database)/documents/workspaces/$(workspaceId); }
-    function isMember(workspaceId) { return signedIn() && exists(memberPath(workspaceId, request.auth.uid)) && get(memberPath(workspaceId, request.auth.uid)).data.status == "active"; }
-    function isOwner(workspaceId) { return isMember(workspaceId) && get(memberPath(workspaceId, request.auth.uid)).data.role == "owner"; }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function workspacePath(workspaceId) {
+      return /databases/$(database)/documents/workspaces/$(workspaceId);
+    }
+
+    function memberPath(workspaceId, uid) {
+      return /databases/$(database)/documents/workspaces/$(workspaceId)/members/$(uid);
+    }
+
+    function isActiveMember(workspaceId, uid) {
+      return signedIn()
+        && exists(memberPath(workspaceId, uid))
+        && get(memberPath(workspaceId, uid)).data.uid == uid
+        && get(memberPath(workspaceId, uid)).data.status == "active";
+    }
+
+    function isCurrentUserMember(workspaceId) {
+      return isActiveMember(workspaceId, request.auth.uid);
+    }
+
+    function isOwner(workspaceId) {
+      return isCurrentUserMember(workspaceId)
+        && get(memberPath(workspaceId, request.auth.uid)).data.role == "owner";
+    }
+
+    function validRole(role) {
+      return role in ["owner", "admin", "staff"];
+    }
+
+    function validMemberStatus(status) {
+      return status in ["active", "suspended"];
+    }
 
     match /users/{userId} {
-      allow read: if signedIn() && request.auth.uid == userId;
+      allow read: if signedIn()
+        && request.auth.uid == userId;
+
       allow create: if signedIn()
         && request.auth.uid == userId
         && request.resource.data.uid == userId
         && request.resource.data.schemaVersion == 1
         && request.resource.data.activeWorkspaceId is string
-        && getAfter(workspacePath(request.resource.data.activeWorkspaceId)).data.ownerUid == userId;
+        && existsAfter(workspacePath(request.resource.data.activeWorkspaceId))
+        && getAfter(workspacePath(request.resource.data.activeWorkspaceId)).data.ownerUid == userId
+        && getAfter(workspacePath(request.resource.data.activeWorkspaceId)).data.status == "active"
+        && existsAfter(memberPath(request.resource.data.activeWorkspaceId, userId))
+        && getAfter(memberPath(request.resource.data.activeWorkspaceId, userId)).data.uid == userId
+        && getAfter(memberPath(request.resource.data.activeWorkspaceId, userId)).data.role == "owner"
+        && getAfter(memberPath(request.resource.data.activeWorkspaceId, userId)).data.status == "active"
+        && getAfter(memberPath(request.resource.data.activeWorkspaceId, userId)).data.schemaVersion == 1;
+
       allow update: if signedIn()
         && request.auth.uid == userId
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.schemaVersion == resource.data.schemaVersion
-        && request.resource.data.activeWorkspaceId is string
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["activeWorkspaceId", "updatedAt"])
+        && request.resource.data.activeWorkspaceId is string
         && (
           request.resource.data.activeWorkspaceId == resource.data.activeWorkspaceId
-          || (
-            existsAfter(memberPath(request.resource.data.activeWorkspaceId, userId)) && getAfter(memberPath(request.resource.data.activeWorkspaceId, userId)).data.uid == userId
-            && getAfter(memberPath(request.resource.data.activeWorkspaceId, userId)).data.status == "active"
-          )
+          || isActiveMember(request.resource.data.activeWorkspaceId, userId)
         );
+
       allow delete: if false;
     }
 
@@ -41,21 +83,29 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.status == "active"
         && existsAfter(memberPath(workspaceId, request.auth.uid))
+        && getAfter(memberPath(workspaceId, request.auth.uid)).data.uid == request.auth.uid
         && getAfter(memberPath(workspaceId, request.auth.uid)).data.role == "owner"
         && getAfter(memberPath(workspaceId, request.auth.uid)).data.status == "active"
+        && getAfter(memberPath(workspaceId, request.auth.uid)).data.schemaVersion == 1
         && existsAfter(userPath(request.auth.uid))
+        && getAfter(userPath(request.auth.uid)).data.uid == request.auth.uid
         && getAfter(userPath(request.auth.uid)).data.activeWorkspaceId == workspaceId;
-      allow read: if isMember(workspaceId);
+
+      allow read: if isCurrentUserMember(workspaceId);
+
       allow update: if isOwner(workspaceId)
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.schemaVersion == resource.schemaVersion
+        && request.resource.data.status == resource.data.status
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name", "updatedAt"])
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0;
+
       allow delete: if false;
 
       match /members/{memberUid} {
-        allow read: if isMember(workspaceId);
+        allow read: if isCurrentUserMember(workspaceId);
+
         allow create: if signedIn()
           && memberUid == request.auth.uid
           && request.resource.data.uid == request.auth.uid
@@ -64,17 +114,26 @@ service cloud.firestore {
           && request.resource.data.schemaVersion == 1
           && existsAfter(workspacePath(workspaceId))
           && getAfter(workspacePath(workspaceId)).data.ownerUid == request.auth.uid
+          && getAfter(workspacePath(workspaceId)).data.status == "active"
           && existsAfter(userPath(request.auth.uid))
+          && getAfter(userPath(request.auth.uid)).data.uid == request.auth.uid
           && getAfter(userPath(request.auth.uid)).data.activeWorkspaceId == workspaceId;
+
         allow update: if isOwner(workspaceId)
           && memberUid != request.auth.uid
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.schemaVersion == resource.schemaVersion
+          && validRole(request.resource.data.role)
+          && validMemberStatus(request.resource.data.status)
+          && request.resource.data.role != "owner"
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["role", "status"]);
+
         allow delete: if false;
       }
     }
 
-    match /{document=**} { allow read, write: if false; }
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }
