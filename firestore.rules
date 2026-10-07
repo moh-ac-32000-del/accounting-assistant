@@ -30,6 +30,13 @@ service cloud.firestore {
       return isActiveMember(workspaceId, request.auth.uid);
     }
 
+    function isActiveMemberAfter(workspaceId, uid) {
+      return signedIn()
+        && existsAfter(memberPath(workspaceId, uid))
+        && getAfter(memberPath(workspaceId, uid)).data.uid == uid
+        && getAfter(memberPath(workspaceId, uid)).data.status == "active";
+    }
+
     function isOwner(workspaceId) {
       return isCurrentUserMember(workspaceId)
         && get(memberPath(workspaceId, request.auth.uid)).data.role == "owner";
@@ -69,7 +76,7 @@ service cloud.firestore {
         && request.resource.data.activeWorkspaceId is string
         && (
           request.resource.data.activeWorkspaceId == resource.data.activeWorkspaceId
-          || isActiveMember(request.resource.data.activeWorkspaceId, userId)
+          || isActiveMemberAfter(request.resource.data.activeWorkspaceId, userId)
         );
 
       allow delete: if false;
