@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { firebaseAuth } from "@/lib/firebase";
+import { getStoreProfile, saveStoreProfile, type StoreCurrency, type StoreLanguage } from "@/lib/store-profile";
 import {
   createWorkspaceForCurrentUser,
   getActiveWorkspaceForCurrentUser,
@@ -32,6 +33,12 @@ export default function HomeScreen() {
     firebaseAuth.currentUser,
   );
   const [workspace, setWorkspace] = useState<WorkspaceSummary | null>(null);
+  const [storeName, setStoreName] = useState("");
+  const [storePhone, setStorePhone] = useState("");
+  const [storeAddress, setStoreAddress] = useState("");
+  const [storeCurrency, setStoreCurrency] = useState<StoreCurrency>("TRY");
+  const [storeLanguage, setStoreLanguage] = useState<StoreLanguage>("ar");
+  const [profileSaved, setProfileSaved] = useState(false);
 
   useEffect(() => {
     return onAuthStateChanged(firebaseAuth, async (user) => {
@@ -45,6 +52,23 @@ export default function HomeScreen() {
       try {
         const activeWorkspace = await getActiveWorkspaceForCurrentUser();
         setWorkspace(activeWorkspace);
+        if (activeWorkspace) {
+          try {
+            const profile = await getStoreProfile(activeWorkspace.id);
+            if (profile) {
+              setStoreName(profile.name);
+              setStorePhone(profile.phone);
+              setStoreAddress(profile.address);
+              setStoreCurrency(profile.currency);
+              setStoreLanguage(profile.language);
+            } else {
+              setStoreName(activeWorkspace.name);
+            }
+          } catch (profileError) {
+            const code = profileError instanceof Error ? profileError.message : "unknown-error";
+            setMessage(`تعذر قراءة بيانات المتجر: ${code}`);
+          }
+        }
       } catch (error) {
         const code = error instanceof Error ? error.message : "unknown-error";
         setMessage(`تعذر قراءة مساحة العمل: ${code}`);
@@ -115,13 +139,51 @@ export default function HomeScreen() {
           <Text style={styles.uid}>UID: {currentUser.uid}</Text>
 
           {workspace ? (
-            <View style={styles.workspaceBox}>
+            <>
+              <View style={styles.workspaceBox}>
               <Text style={styles.workspaceTitle}>مساحة العمل</Text>
               <Text style={styles.workspaceName}>{workspace.name}</Text>
               <Text style={styles.workspaceMeta}>
                 الدور: {workspace.role} • ID: {workspace.id}
               </Text>
             </View>
+
+            <View style={styles.profileBox}>
+              <Text style={styles.sectionTitle}>بيانات المتجر</Text>
+              <TextInput value={storeName} onChangeText={setStoreName} placeholder="اسم المتجر" placeholderTextColor="#7f8790" style={styles.input} />
+              <TextInput value={storePhone} onChangeText={setStorePhone} placeholder="رقم الهاتف" placeholderTextColor="#7f8790" keyboardType="phone-pad" style={styles.input} />
+              <TextInput value={storeAddress} onChangeText={setStoreAddress} placeholder="العنوان" placeholderTextColor="#7f8790" style={styles.input} />
+              <View style={styles.optionRow}>
+                <Pressable style={[styles.option, storeCurrency === "TRY" && styles.optionSelected]} onPress={() => setStoreCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
+                <Pressable style={[styles.option, storeCurrency === "USD" && styles.optionSelected]} onPress={() => setStoreCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
+              </View>
+              <View style={styles.optionRow}>
+                <Pressable style={[styles.option, storeLanguage === "ar" && styles.optionSelected]} onPress={() => setStoreLanguage("ar")}><Text style={styles.optionText}>العربية</Text></Pressable>
+                <Pressable style={[styles.option, storeLanguage === "tr" && styles.optionSelected]} onPress={() => setStoreLanguage("tr")}><Text style={styles.optionText}>Türkçe</Text></Pressable>
+                <Pressable style={[styles.option, storeLanguage === "en" && styles.optionSelected]} onPress={() => setStoreLanguage("en")}><Text style={styles.optionText}>English</Text></Pressable>
+              </View>
+              <Pressable
+                style={[styles.button, busy && styles.disabled]}
+                disabled={busy || workspace.role === "staff"}
+                onPress={async () => {
+                  setBusy(true);
+                  setProfileSaved(false);
+                  try {
+                    await saveStoreProfile(workspace.id, { name: storeName, phone: storePhone, address: storeAddress, currency: storeCurrency, language: storeLanguage });
+                    setProfileSaved(true);
+                  } catch (error) {
+                    const code = error instanceof Error ? error.message : "unknown-error";
+                    setMessage(`فشل حفظ بيانات المتجر: ${code}`);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                <Text style={styles.buttonText}>{busy ? "جارٍ الحفظ..." : "حفظ بيانات المتجر"}</Text>
+              </Pressable>
+              {profileSaved && <Text style={styles.saved}>تم حفظ بيانات المتجر</Text>}
+            </View>
+            </>
           ) : (
             <>
               <Text style={styles.sectionTitle}>إنشاء مساحة العمل الأولى</Text>
@@ -321,6 +383,42 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 6,
     textAlign: "center",
+  },
+  profileBox: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#3a4048",
+    backgroundColor: "#111315",
+  },
+  optionRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 10,
+  },
+  option: {
+    flex: 1,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#3a4048",
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  optionSelected: {
+    borderColor: "#d4a72c",
+    backgroundColor: "#2a2515",
+  },
+  optionText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  saved: {
+    color: "#75d69c",
+    textAlign: "center",
+    marginTop: 10,
   },
   workspaceMeta: {
     color: "#aeb4bb",
