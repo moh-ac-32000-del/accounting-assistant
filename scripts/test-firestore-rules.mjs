@@ -90,6 +90,61 @@ try {
   await assertFails(updateDoc(doc(aliceDb, "users", aliceUid), { uid: "different-user" }));
   await assertFails(updateDoc(doc(aliceDb, "users", aliceUid), { schemaVersion: 2 }));
 
+  const customerRef = doc(aliceDb, "workspaces", thirdWorkspaceId, "customers", "customer-a");
+  await assertSucceeds(
+    setDoc(customerRef, {
+      schemaVersion: 1,
+      workspaceId: thirdWorkspaceId,
+      name: "Test Customer",
+      phone: "5550000000",
+      address: "Test Address",
+      notes: "Test Notes",
+      status: "active",
+      createdByUid: aliceUid,
+      createdAt: "test",
+      updatedAt: "test",
+    }),
+  );
+
+  await assertSucceeds(getDoc(customerRef));
+
+  await assertFails(
+    setDoc(doc(bob.firestore(), "workspaces", thirdWorkspaceId, "customers", "customer-b"), {
+      schemaVersion: 1,
+      workspaceId: thirdWorkspaceId,
+      name: "Unauthorized Customer",
+      phone: "",
+      address: "",
+      notes: "",
+      status: "active",
+      createdByUid: bobUid,
+      createdAt: "test",
+      updatedAt: "test",
+    }),
+  );
+
+  await assertFails(
+    updateDoc(customerRef, { workspaceId: "another-workspace" }),
+  );
+  await assertFails(
+    updateDoc(customerRef, { createdByUid: bobUid }),
+  );
+  await assertSucceeds(
+    updateDoc(customerRef, { name: "Updated Customer", status: "archived", updatedByUid: aliceUid, updatedAt: "test-5" }),
+  );
+  await assertFails(
+    updateDoc(customerRef, { status: "invalid" }),
+  );
+  await assertFails(
+    updateDoc(customerRef, { createdAt: "changed" }),
+  );
+  await assertFails(
+    updateDoc(customerRef, { schemaVersion: 2 }),
+  );
+  await assertFails(
+    updateDoc(customerRef, { unexpectedField: true }),
+  );
+
   await assertFails(getDoc(doc(aliceDb, "customers", "future-customer")));
   await assertFails(getDoc(doc(aliceDb, "debts", "future-debt")));
   await assertFails(getDoc(doc(aliceDb, "payments", "future-payment")));
