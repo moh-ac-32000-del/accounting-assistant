@@ -183,6 +183,16 @@ try {
   await assertSucceeds(getDoc(debtRef));
 
   const cashRef = doc(aliceDb, "workspaces", thirdWorkspaceId, "cashMovements", "cash-a");
+  const auditRef = doc(aliceDb, "workspaces", thirdWorkspaceId, "auditEvents", "audit-a");
+  await assertFails(setDoc(auditRef, {
+    schemaVersion: 1,
+    type: "test",
+    uid: aliceUid,
+    workspaceId: thirdWorkspaceId,
+    entityId: "x",
+    createdAt: "test",
+  }));
+
   await assertFails(setDoc(cashRef, {
     schemaVersion: 1,
     workspaceId: thirdWorkspaceId,
