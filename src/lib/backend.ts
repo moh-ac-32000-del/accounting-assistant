@@ -41,6 +41,19 @@ export async function checkBackendHealth(workspaceId: string): Promise<BackendHe
   return (await command({ workspaceId })).data;
 }
 
+export type CreatePaymentInput = {
+  workspaceId: string;
+  debtId: string;
+  currency: "TRY" | "USD";
+  amountMinor: number;
+  idempotencyKey: string;
+};
+
+export async function createPayment(input: CreatePaymentInput) {
+  const command = httpsCallable<CreatePaymentInput, { ok: true; payment: unknown; replayed: boolean }>(functions, "createPayment");
+  return (await command(input)).data;
+}
+
 export async function createDebt(input: CreateDebtInput) {
   const command = httpsCallable<CreateDebtInput, { ok: true; debt: Debt; replayed: boolean }>(
     functions,

@@ -36,8 +36,11 @@ export async function createDebtCommand(uid: string, data: unknown) {
   return db.runTransaction(async (tx) => {
     const receipt = await tx.get(receiptRef);
     if (receipt.exists) {
-      const debtId = receipt.data()?.debtId;
-      if (typeof debtId !== "string") throw new HttpsError("internal", "invalid-operation-receipt");
+      const receiptData = receipt.data() ?? {};
+      const debtId = receiptData.debtId;
+      if (receiptData.type !== "createDebt" || receiptData.customerId !== customerId || receiptData.currency !== currency || receiptData.amountMinor !== amountMinor || typeof debtId !== "string") {
+        throw new HttpsError("already-exists", "idempotency-key-conflict");
+      }
       const existing = await tx.get(db.doc(`workspaces/${workspaceId}/debts/${debtId}`));
       if (!existing.exists) throw new HttpsError("internal", "operation-receipt-debt-missing");
       return { ok: true as const, debt: existing.data() as Debt, replayed: true };
@@ -57,7 +60,7 @@ export async function createDebtCommand(uid: string, data: unknown) {
       createdByUid: uid, createdAt: now, updatedAt: now,
     };
     tx.create(debtRef, debt);
-    tx.create(receiptRef, { schemaVersion: 1, type: "createDebt", idempotencyKey, uid, debtId: debtRef.id, createdAt: now });
+    tx.create(receiptRef, { schemaVersion: 1, type: "createDebt", idempotencyKey, uid, debtId: debtRef.id, customerId, currency, amountMinor, createdAt: now });
     return { ok: true as const, debt, replayed: false };
   });
 }
