@@ -75,7 +75,7 @@ export async function createPaymentCommand(uid: string, data: unknown) {
     if (debt.workspaceId !== workspaceId || debt.schemaVersion !== 1) {
       throw new HttpsError("failed-precondition", "invalid-debt");
     }
-    if (!validAmount(debt.amountMinor) || !Number.isSafeInteger(debt.paidMinor) || debt.paidMinor < 0 || !validAmount(debt.remainingMinor) || debt.amountMinor !== debt.paidMinor + debt.remainingMinor) {
+    const paidMinor = debt.paidMinor;\n    if (!validAmount(debt.amountMinor) || !Number.isSafeInteger(paidMinor) || paidMinor < 0 || !validAmount(debt.remainingMinor) || debt.amountMinor !== paidMinor + debt.remainingMinor) {
       throw new HttpsError("failed-precondition", "invalid-debt-balance");
     }
     if (debt.currency !== currency) {
@@ -88,7 +88,7 @@ export async function createPaymentCommand(uid: string, data: unknown) {
       throw new HttpsError("failed-precondition", "payment-exceeds-remaining-debt");
     }
 
-    const newPaid = debt.paidMinor + amountMinor;
+    const newPaid = paidMinor + amountMinor;
     const newRemaining = debt.remainingMinor - amountMinor;
     if (!Number.isSafeInteger(newPaid) || !Number.isSafeInteger(newRemaining) || newRemaining < 0 || newPaid + newRemaining !== debt.amountMinor) {
       throw new HttpsError("failed-precondition", "invalid-debt-balance");
