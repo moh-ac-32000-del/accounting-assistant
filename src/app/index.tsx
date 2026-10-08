@@ -234,7 +234,7 @@ export default function HomeScreen() {
                   try {
                     const amountMinor = Math.round(amount * 100);
                     const result = await createDebt({ workspaceId: workspace.id, customerId: debtCustomerId.trim(), currency: debtCurrency, amountMinor, idempotencyKey: "debt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10) });
-                    setDebts((current) => [result.debt, ...current]);
+                    setDebts(await listDebts(workspace.id));
                     setDebtAmount("");
                     setMessage(result.replayed ? t(storeLanguage, "debtReplay") : t(storeLanguage, "debtCreated"));
                   } catch (error) { setMessage(t(storeLanguage, "debtCreateFailed") + ": " + (error instanceof Error ? error.message : "unknown-error")); }
