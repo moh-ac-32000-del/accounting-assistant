@@ -120,6 +120,10 @@ export async function createPaymentCommand(uid: string, data: unknown) {
 
     tx.create(paymentRef, payment);
     tx.create(cashRef, cashMovement);
+    tx.create(db.doc(`workspaces/${workspaceId}/auditEvents/${paymentRef.id}`), {
+      schemaVersion: 1, type: "createPayment", uid, workspaceId, entityId: paymentRef.id,
+      debtId, amountMinor, currency, createdAt: now,
+    });
     tx.update(debtRef, {
       paidMinor: newPaid,
       remainingMinor: newRemaining,
