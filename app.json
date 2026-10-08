@@ -10,7 +10,8 @@
       "expo-router"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "baseUrl": "/accounting-assistant"
     },
     "android": {
       "package": "com.accountingassistant.app"
