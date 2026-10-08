@@ -768,7 +768,7 @@ export default function HomeScreen() {
       )}
 
       {!!message && <Text style={styles.message}>{message}</Text>}
-    </View>
+    </ScrollView>
   );
 }
 
