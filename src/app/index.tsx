@@ -17,6 +17,8 @@ import {
 import { firebaseAuth } from "@/lib/firebase";
 import { isRTL, t, type AppLanguage } from "@/lib/i18n";
 import { createCustomer, listCustomers, type Customer } from "@/lib/customers";
+import { listDebts, type Debt } from "@/lib/debts";
+import { createDebt } from "@/lib/backend";
 import {
   getStoreProfile,
   saveStoreProfile,
@@ -50,6 +52,10 @@ export default function HomeScreen() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerNotes, setCustomerNotes] = useState("");
+  const [debts, setDebts] = useState<Debt[]>([]);
+  const [debtCustomerId, setDebtCustomerId] = useState("");
+  const [debtAmount, setDebtAmount] = useState("");
+  const [debtCurrency, setDebtCurrency] = useState<"TRY" | "USD">("TRY");
 
   const rtl = isRTL(storeLanguage);
 
@@ -64,7 +70,8 @@ export default function HomeScreen() {
         const activeWorkspace = await getActiveWorkspaceForCurrentUser();
         setWorkspace(activeWorkspace);
         if (activeWorkspace) {
-          try { setCustomers(await listCustomers(activeWorkspace.id)); }
+          try { setCustomers(await listCustomers(activeWorkspace.id));
+            setDebts(await listDebts(activeWorkspace.id)); }
           catch (error) { setMessage("تعذر قراءة العملاء: " + (error instanceof Error ? error.message : "unknown-error")); }
         }
 
@@ -172,6 +179,32 @@ export default function HomeScreen() {
                 </Text>
               </View>
 
+
+              <View style={styles.profileBox}>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>الديون</Text>
+                <TextInput value={debtCustomerId} onChangeText={setDebtCustomerId} placeholder="معرّف العميل *" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={debtAmount} onChangeText={setDebtAmount} placeholder="مبلغ الدين" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <View style={styles.optionRow}>
+                  <Pressable style={[styles.option, debtCurrency === "TRY" && styles.optionSelected]} onPress={() => setDebtCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
+                  <Pressable style={[styles.option, debtCurrency === "USD" && styles.optionSelected]} onPress={() => setDebtCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
+                </View>
+                <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy || workspace.role === "staff"} onPress={async () => {
+                  const amount = Number(debtAmount.replace(",", "."));
+                  if (!debtCustomerId.trim() || !Number.isFinite(amount) || amount <= 0) { setMessage("العميل والمبلغ مطلوبان"); return; }
+                  setBusy(true);
+                  try {
+                    const amountMinor = Math.round(amount * 100);
+                    const result = await createDebt({ workspaceId: workspace.id, customerId: debtCustomerId.trim(), currency: debtCurrency, amountMinor, idempotencyKey: "debt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10) });
+                    setDebts((current) => [result.debt, ...current]);
+                    setDebtAmount("");
+                    setMessage(result.replayed ? "تم استرجاع عملية الدين السابقة" : "تم تسجيل الدين");
+                  } catch (error) { setMessage("تعذر تسجيل الدين: " + (error instanceof Error ? error.message : "unknown-error")); }
+                  finally { setBusy(false); }
+                }}><Text style={styles.buttonText}>تسجيل دين</Text></Pressable>
+                <View style={styles.customerList}>
+                  {debts.map((debt) => <View key={debt.id} style={styles.customerRow}><View style={styles.customerMain}><Text style={styles.customerName}>{debt.customerId}</Text><Text style={styles.workspaceMeta}>{debt.currency} • {((debt.remainingMinor ?? 0) / 100).toFixed(2)} متبقٍ</Text></View><Text style={debt.status === "settled" ? styles.customerActive : styles.workspaceMeta}>{debt.status === "settled" ? "مسدد" : "مفتوح"}</Text></View>)}
+                </View>
+              </View>
 
               <View style={styles.profileBox}>
                 <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>العملاء</Text>
