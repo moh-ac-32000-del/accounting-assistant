@@ -18,6 +18,9 @@ export async function archiveRecordCommand(uid: string, data: unknown) {
 
   await requireActiveMember(uid, workspaceId);
   if (!sourceType || !sourceId || !reason) throw new HttpsError("invalid-argument", "archive-fields-required");
+  if (!["customers", "debts", "payments", "cashMovements", "journalEntries", "reminders"].includes(sourceType)) {
+    throw new HttpsError("invalid-argument", "archive-source-type-not-allowed");
+  }
   if (!validKey(idempotencyKey)) throw new HttpsError("invalid-argument", "invalid-idempotency-key");
 
   const sourceRef = db.doc(`workspaces/${workspaceId}/${sourceType}/${sourceId}`);
