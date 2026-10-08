@@ -18,8 +18,10 @@ import { firebaseAuth } from "@/lib/firebase";
 import { isRTL, t, type AppLanguage } from "@/lib/i18n";
 import { createCustomer, listCustomers, type Customer } from "@/lib/customers";
 import { listDebts, type Debt } from "@/lib/debts";
-import { createCashMovement, createDebt, createPayment } from "@/lib/backend";
+import { closeDay, createCashMovement, createDebt, createJournalEntry, createPayment } from "@/lib/backend";
 import { listCashMovements, type CashMovement } from "@/lib/cash";
+import { listJournalEntries, type JournalEntry } from "@/lib/journal";
+import { listDailyClosings, type DailyClosing } from "@/lib/closing";
 import {
   getStoreProfile,
   saveStoreProfile,
@@ -64,6 +66,14 @@ export default function HomeScreen() {
   const [cashCurrency, setCashCurrency] = useState<"TRY" | "USD">("TRY");
   const [cashAmount, setCashAmount] = useState("");
   const [cashReason, setCashReason] = useState("");
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [journalDirection, setJournalDirection] = useState<"in" | "out">("in");
+  const [journalCurrency, setJournalCurrency] = useState<"TRY" | "USD">("TRY");
+  const [journalAmount, setJournalAmount] = useState("");
+  const [journalReason, setJournalReason] = useState("");
+  const [dailyClosings, setDailyClosings] = useState<DailyClosing[]>([]);
+  const [closingTry, setClosingTry] = useState("");
+  const [closingUsd, setClosingUsd] = useState("");
 
   const rtl = isRTL(storeLanguage);
 
@@ -80,7 +90,9 @@ export default function HomeScreen() {
         if (activeWorkspace) {
           try { setCustomers(await listCustomers(activeWorkspace.id));
             setDebts(await listDebts(activeWorkspace.id));
-            setCashMovements(await listCashMovements(activeWorkspace.id)); }
+            setCashMovements(await listCashMovements(activeWorkspace.id));
+            setJournalEntries(await listJournalEntries(activeWorkspace.id));
+            setDailyClosings(await listDailyClosings(activeWorkspace.id)); }
           catch (error) { setMessage("تعذر قراءة العملاء: " + (error instanceof Error ? error.message : "unknown-error")); }
         }
 
@@ -343,6 +355,102 @@ export default function HomeScreen() {
                     </View>
                   ))}
                   {cashMovements.length === 0 && <Text style={styles.workspaceMeta}>لا توجد حركات نقد بعد</Text>}
+                </View>
+              </View>
+
+              <View style={styles.profileBox}>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>السجل المالي</Text>
+                <View style={styles.optionRow}>
+                  <Pressable style={[styles.option, journalDirection === "in" && styles.optionSelected]} onPress={() => setJournalDirection("in")}><Text style={styles.optionText}>داخل</Text></Pressable>
+                  <Pressable style={[styles.option, journalDirection === "out" && styles.optionSelected]} onPress={() => setJournalDirection("out")}><Text style={styles.optionText}>خارج</Text></Pressable>
+                </View>
+                <View style={styles.optionRow}>
+                  <Pressable style={[styles.option, journalCurrency === "TRY" && styles.optionSelected]} onPress={() => setJournalCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
+                  <Pressable style={[styles.option, journalCurrency === "USD" && styles.optionSelected]} onPress={() => setJournalCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
+                </View>
+                <TextInput value={journalAmount} onChangeText={setJournalAmount} placeholder="المبلغ *" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={journalReason} onChangeText={setJournalReason} placeholder="السبب *" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
+                  const amount = Number(journalAmount.replace(",", "."));
+                  if (!Number.isFinite(amount) || amount <= 0 || !journalReason.trim()) { setMessage("المبلغ والسبب مطلوبان"); return; }
+                  setBusy(true);
+                  try {
+                    const result = await createJournalEntry({
+                      workspaceId: workspace.id,
+                      direction: journalDirection,
+                      currency: journalCurrency,
+                      amountMinor: Math.round(amount * 100),
+                      reason: journalReason.trim(),
+                      idempotencyKey: "journal-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10),
+                    });
+                    setJournalEntries(await listJournalEntries(workspace.id));
+                    setJournalAmount("");
+                    setJournalReason("");
+                    setMessage(result.replayed ? "تم استرجاع القيد السابق" : "تم تسجيل القيد");
+                  } catch (error) {
+                    setMessage("تعذر تسجيل القيد: " + (error instanceof Error ? error.message : "unknown-error"));
+                  } finally { setBusy(false); }
+                }}><Text style={styles.buttonText}>تسجيل قيد</Text></Pressable>
+                <View style={styles.customerList}>
+                  {journalEntries.map((entry) => (
+                    <View key={entry.id} style={styles.customerRow}>
+                      <View style={styles.customerMain}>
+                        <Text style={styles.customerName}>{entry.direction === "in" ? "داخل" : "خارج"} • {entry.reason}</Text>
+                        <Text style={styles.workspaceMeta}>{entry.currency} • {(entry.amountMinor / 100).toFixed(2)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                  {journalEntries.length === 0 && <Text style={styles.workspaceMeta}>لا توجد قيود بعد</Text>}
+                </View>
+              </View>
+
+              <View style={styles.profileBox}>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>إغلاق اليوم</Text>
+                {workspace.role === "owner" || workspace.role === "admin" ? <>
+                  <TextInput value={closingTry} onChangeText={setClosingTry} placeholder="الرصيد الفعلي TRY" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                  <TextInput value={closingUsd} onChangeText={setClosingUsd} placeholder="الرصيد الفعلي USD (اختياري)" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                  <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
+                    const tryAmount = Number(closingTry.replace(",", "."));
+                    const usdAmount = closingUsd.trim() ? Number(closingUsd.replace(",", ".")) : 0;
+                    if (!Number.isFinite(tryAmount) || tryAmount < 0 || !Number.isFinite(usdAmount) || usdAmount < 0 || (!closingTry.trim() && !closingUsd.trim())) {
+                      setMessage("أدخل رصيدًا صحيحًا واحدًا على الأقل");
+                      return;
+                    }
+                    setBusy(true);
+                    try {
+                      const balances: Partial<Record<"TRY" | "USD", number>> = {};
+                      if (closingTry.trim()) balances.TRY = Math.round(tryAmount * 100);
+                      if (closingUsd.trim()) balances.USD = Math.round(usdAmount * 100);
+                      const closingDate = new Date().toLocaleDateString("en-CA");
+                      const result = await closeDay({
+                        workspaceId: workspace.id,
+                        closingDate,
+                        balances,
+                        idempotencyKey: "closing-" + closingDate,
+                      });
+                      setDailyClosings(await listDailyClosings(workspace.id));
+                      setClosingTry("");
+                      setClosingUsd("");
+                      setMessage(result.replayed ? "تم استرجاع إغلاق اليوم السابق" : "تم إغلاق اليوم");
+                    } catch (error) {
+                      setMessage("تعذر إغلاق اليوم: " + (error instanceof Error ? error.message : "unknown-error"));
+                    } finally { setBusy(false); }
+                  }}><Text style={styles.buttonText}>إغلاق اليوم</Text></Pressable>
+                </> : <Text style={styles.workspaceMeta}>إغلاق اليوم متاح للمالك والمدير فقط</Text>}
+                <View style={styles.customerList}>
+                  {dailyClosings.slice(0, 5).map((closing) => (
+                    <View key={closing.id} style={styles.customerRow}>
+                      <View style={styles.customerMain}>
+                        <Text style={styles.customerName}>{closing.closingDate}</Text>
+                        <Text style={styles.workspaceMeta}>
+                          {closing.balances.TRY !== undefined ? "TRY • " + (closing.balances.TRY / 100).toFixed(2) : ""}
+                          {closing.balances.TRY !== undefined && closing.balances.USD !== undefined ? "   " : ""}
+                          {closing.balances.USD !== undefined ? "USD • " + (closing.balances.USD / 100).toFixed(2) : ""}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                  {dailyClosings.length === 0 && <Text style={styles.workspaceMeta}>لا توجد أيام مغلقة بعد</Text>}
                 </View>
               </View>
 
