@@ -1,9 +1,5 @@
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDoc, getDocs, orderBy, query, doc } from "firebase/firestore";
 import { firebaseAuth, firestoreDb } from "@/lib/firebase";
-export type DailyClosing = { id:string; schemaVersion:1; workspaceId:string; closingDate:string; balances:Partial<Record<"TRY"|"USD",number>>; closedByUid:string; closedAt:unknown; };
-export async function listDailyClosings(workspaceId:string):Promise<DailyClosing[]> {
- if(!firebaseAuth.currentUser?.uid) throw new Error("unauthenticated");
- const ref=collection(firestoreDb,"workspaces",workspaceId,"dailyClosings");
- const snapshot=await getDocs(query(ref,orderBy("closedAt","desc")));
- return snapshot.docs.map(item=>({id:item.id,...item.data()} as DailyClosing));
-}
+export type DailyClosing = { id: string; schemaVersion: 1; workspaceId: string; closingDate: string; countedBalances: Partial<Record<"TRY"|"USD", number>>; expectedBalances: Partial<Record<"TRY"|"USD", number>>; closedByUid: string; closedAt: unknown; };
+export async function getDailyClosing(workspaceId:string, date:string):Promise<DailyClosing|null>{ if(!firebaseAuth.currentUser?.uid) throw new Error("unauthenticated"); const s=await getDoc(doc(firestoreDb,"workspaces",workspaceId,"dailyClosings",date)); return s.exists()?({id:s.id,...s.data()} as DailyClosing):null; }
+export async function listDailyClosings(workspaceId:string):Promise<DailyClosing[]>{ if(!firebaseAuth.currentUser?.uid) throw new Error("unauthenticated"); const s=await getDocs(query(collection(firestoreDb,"workspaces",workspaceId,"dailyClosings"),orderBy("closingDate","desc"))); return s.docs.map(d=>({id:d.id,...d.data()} as DailyClosing)); }
