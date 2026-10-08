@@ -4,6 +4,7 @@ import { requireActiveMember } from "./auth";
 import { createDebtCommand } from "./debts";
 import { createPaymentCommand } from "./payments";
 import { createCashMovementCommand } from "./cash";
+import { createJournalEntryCommand } from "./journal";
 
 setGlobalOptions({ region: "europe-west1", maxInstances: 10 });
 
@@ -22,6 +23,11 @@ export const createDebt = onCall(async (request) => {
 export const createPayment = onCall(async (request) => {
   if (!request.auth?.uid) throw new HttpsError("unauthenticated", "authentication-required");
   return createPaymentCommand(request.auth.uid, request.data);
+});
+
+export const createJournalEntry = onCall(async (request) => {
+  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "authentication-required");
+  return createJournalEntryCommand(request.auth.uid, request.data);
 });
 
 export const createCashMovement = onCall(async (request) => {
