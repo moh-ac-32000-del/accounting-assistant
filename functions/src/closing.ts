@@ -18,7 +18,7 @@ export async function closeDayCommand(uid: string, data: unknown) {
   const workspaceId = typeof input.workspaceId === "string" ? input.workspaceId.trim() : "";
   const closingDate = typeof input.closingDate === "string" ? input.closingDate.trim() : "";
   const idempotencyKey = input.idempotencyKey;
-  const balances = input.balances;
+  const countedBalances = input.balances;
 
   const member = await requireActiveMember(uid, workspaceId);
   if (member.role !== "owner" && member.role !== "admin") {
@@ -28,9 +28,9 @@ export async function closeDayCommand(uid: string, data: unknown) {
     throw new HttpsError("invalid-argument", "invalid-closing-date");
   }
   if (!validKey(idempotencyKey)) throw new HttpsError("invalid-argument", "invalid-idempotency-key");
-  if (!balances || typeof balances !== "object") throw new HttpsError("invalid-argument", "balances-required");
+  if (!countedBalances || typeof countedBalances !== "object") throw new HttpsError("invalid-argument", "balances-required");
 
-  const raw = balances as Record<string, unknown>;
+  const raw = countedBalances as Record<string, unknown>;
   const normalized: Partial<Record<Currency, number>> = {};
   for (const currency of ["TRY", "USD"] as const) {
     if (raw[currency] !== undefined) {
@@ -41,6 +41,7 @@ export async function closeDayCommand(uid: string, data: unknown) {
   if (Object.keys(normalized).length === 0) throw new HttpsError("invalid-argument", "closing-balance-required");
 
   const closingRef = db.doc(`workspaces/${workspaceId}/dailyClosings/${closingDate}`);
+  const cashBalanceRefs = (["TRY", "USD"] as const).map((currency) => db.doc(`workspaces/${workspaceId}/cashBalances/${currency}`));
   const receiptRef = db.doc(`workspaces/${workspaceId}/operationReceipts/${idempotencyKey}`);
 
   return db.runTransaction(async (tx) => {
@@ -58,13 +59,26 @@ export async function closeDayCommand(uid: string, data: unknown) {
     const existing = await tx.get(closingRef);
     if (existing.exists) throw new HttpsError("already-exists", "day-already-closed");
 
+    const balanceSnapshots = await Promise.all(cashBalanceRefs.map((ref) => tx.get(ref)));
+    const expectedBalances: Partial<Record<Currency, number>> = {};
+    for (let i = 0; i < cashBalanceRefs.length; i++) {
+      const currency = ["TRY", "USD"][i] as Currency;
+      const snapshot = balanceSnapshots[i];
+      const value = snapshot.exists ? snapshot.data()?.balanceMinor : 0;
+      if (!Number.isSafeInteger(value) || (value as number) < 0) {
+        throw new HttpsError("failed-precondition", "invalid-cash-balance");
+      }
+      if (normalized[currency] !== undefined || snapshot.exists) expectedBalances[currency] = value as number;
+    }
+
     const now = Timestamp.now();
     const closing = {
       id: closingDate,
       schemaVersion: 1 as const,
       workspaceId,
       closingDate,
-      balances: normalized,
+      countedBalances: normalized,
+      expectedBalances,
       closedByUid: uid,
       closedAt: now,
     };
@@ -77,7 +91,8 @@ export async function closeDayCommand(uid: string, data: unknown) {
       workspaceId,
       entityId: closingDate,
       closingDate,
-      balances: normalized,
+      countedBalances: normalized,
+      expectedBalances,
       createdAt: now,
     });
     tx.create(receiptRef, {
@@ -86,7 +101,7 @@ export async function closeDayCommand(uid: string, data: unknown) {
       idempotencyKey,
       uid,
       closingDate,
-      balancesHash: JSON.stringify(normalized),
+      balancesHash: JSON.stringify({ countedBalances: normalized, expectedBalances }),
       createdAt: now,
     });
 
