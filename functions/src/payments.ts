@@ -42,8 +42,9 @@ export async function createPaymentCommand(uid: string, data: unknown) {
   return db.runTransaction(async (tx) => {
     const receipt = await tx.get(receiptRef);
     if (receipt.exists) {
-      const paymentId = receipt.data()?.paymentId;
-      if (typeof paymentId !== "string") {
+      const receiptData = receipt.data() ?? {};
+      const paymentId = receiptData.paymentId;
+      if (receiptData.type !== "createPayment" || receiptData.debtId !== debtId || receiptData.currency !== currency || receiptData.amountMinor !== amountMinor || typeof paymentId !== "string") {
         throw new HttpsError("internal", "invalid-operation-receipt");
       }
       const existing = await tx.get(
@@ -114,6 +115,8 @@ export async function createPaymentCommand(uid: string, data: unknown) {
       uid,
       paymentId: paymentRef.id,
       debtId,
+      currency,
+      amountMinor,
       createdAt: now,
     });
 
