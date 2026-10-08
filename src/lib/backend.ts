@@ -75,3 +75,36 @@ export async function createDebt(input: CreateDebtInput) {
   );
   return (await command(input)).data;
 }
+
+
+export type CreateJournalEntryInput = {
+  workspaceId: string;
+  direction: "in" | "out";
+  currency: "TRY" | "USD";
+  amountMinor: number;
+  reason: string;
+  idempotencyKey: string;
+};
+
+export async function createJournalEntry(input: CreateJournalEntryInput) {
+  const command = httpsCallable<CreateJournalEntryInput, { ok: true; entry: unknown; replayed: boolean }>(
+    functions,
+    "createJournalEntry",
+  );
+  return (await command(input)).data;
+}
+
+export type CloseDayInput = {
+  workspaceId: string;
+  closingDate: string;
+  balances: Partial<Record<"TRY" | "USD", number>>;
+  idempotencyKey: string;
+};
+
+export async function closeDay(input: CloseDayInput) {
+  const command = httpsCallable<CloseDayInput, { ok: true; closing: unknown; replayed: boolean }>(
+    functions,
+    "closeDay",
+  );
+  return (await command(input)).data;
+}
