@@ -75,7 +75,8 @@ export async function createPaymentCommand(uid: string, data: unknown) {
     if (debt.workspaceId !== workspaceId || debt.schemaVersion !== 1) {
       throw new HttpsError("failed-precondition", "invalid-debt");
     }
-    const paidMinor = debt.paidMinor;\n    if (!validAmount(debt.amountMinor) || !Number.isSafeInteger(paidMinor) || paidMinor < 0 || !validAmount(debt.remainingMinor) || debt.amountMinor !== paidMinor + debt.remainingMinor) {
+    const paidMinor = debt.paidMinor;
+    if (!validAmount(debt.amountMinor) || !Number.isSafeInteger(paidMinor) || paidMinor < 0 || !validAmount(debt.remainingMinor) || debt.amountMinor !== paidMinor + debt.remainingMinor) {
       throw new HttpsError("failed-precondition", "invalid-debt-balance");
     }
     if (debt.currency !== currency) {
