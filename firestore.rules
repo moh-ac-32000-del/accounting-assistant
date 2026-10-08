@@ -210,6 +210,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /workspaces/{workspaceId}/debts/{debtId} {
+      allow read: if isCurrentUserMember(workspaceId);
+      allow create, update, delete: if false;
+    }
+
+    match /workspaces/{workspaceId}/operationReceipts/{receiptId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
