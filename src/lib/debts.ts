@@ -1,4 +1,4 @@
-import { collection, getDoc, getDocs, orderBy, query, doc } from "firebase/firestore";
+import { collection, getDoc, getDocs, orderBy, query, doc, where } from "firebase/firestore";
 import { firebaseAuth, firestoreDb } from "@/lib/firebase";
 
 export type DebtStatus = "open" | "settled";
@@ -23,16 +23,9 @@ export async function listDebts(workspaceId: string, status?: DebtStatus): Promi
   requireUid();
   const base = collection(firestoreDb, "workspaces", workspaceId, "debts");
   const q = status
-    ? query(base, queryStatus(status), orderBy("createdAt", "desc"))
+    ? query(base, where("status", "==", status), orderBy("createdAt", "desc"))
     : query(base, orderBy("createdAt", "desc"));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as Debt));
 }
 
-function queryStatus(status: DebtStatus) {
-  return requireFirestoreWhere("status", "==", status);
-}
-
-function requireFirestoreWhere(field: string, op: "==", value: unknown) {
-  return { type: "where", field, op, value } as never;
-}
