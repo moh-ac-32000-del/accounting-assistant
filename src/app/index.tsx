@@ -18,7 +18,8 @@ import { firebaseAuth } from "@/lib/firebase";
 import { isRTL, t, type AppLanguage } from "@/lib/i18n";
 import { createCustomer, listCustomers, type Customer } from "@/lib/customers";
 import { listDebts, type Debt } from "@/lib/debts";
-import { createDebt, createPayment } from "@/lib/backend";
+import { createCashMovement, createDebt, createPayment } from "@/lib/backend";
+import { listCashMovements, type CashMovement } from "@/lib/cash";
 import {
   getStoreProfile,
   saveStoreProfile,
@@ -58,6 +59,11 @@ export default function HomeScreen() {
   const [debtCurrency, setDebtCurrency] = useState<"TRY" | "USD">("TRY");
   const [paymentDebtId, setPaymentDebtId] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [cashMovements, setCashMovements] = useState<CashMovement[]>([]);
+  const [cashDirection, setCashDirection] = useState<"in" | "out">("in");
+  const [cashCurrency, setCashCurrency] = useState<"TRY" | "USD">("TRY");
+  const [cashAmount, setCashAmount] = useState("");
+  const [cashReason, setCashReason] = useState("");
 
   const rtl = isRTL(storeLanguage);
 
@@ -73,7 +79,8 @@ export default function HomeScreen() {
         setWorkspace(activeWorkspace);
         if (activeWorkspace) {
           try { setCustomers(await listCustomers(activeWorkspace.id));
-            setDebts(await listDebts(activeWorkspace.id)); }
+            setDebts(await listDebts(activeWorkspace.id));
+            setCashMovements(await listCashMovements(activeWorkspace.id)); }
           catch (error) { setMessage("تعذر قراءة العملاء: " + (error instanceof Error ? error.message : "unknown-error")); }
         }
 
@@ -293,6 +300,52 @@ export default function HomeScreen() {
                     ))}
                 </View>
               </View>
+              <View style={styles.profileBox}>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>حركة النقد</Text>
+                <View style={styles.optionRow}>
+                  <Pressable style={[styles.option, cashDirection === "in" && styles.optionSelected]} onPress={() => setCashDirection("in")}><Text style={styles.optionText}>داخل</Text></Pressable>
+                  <Pressable style={[styles.option, cashDirection === "out" && styles.optionSelected]} onPress={() => setCashDirection("out")}><Text style={styles.optionText}>خارج</Text></Pressable>
+                </View>
+                <View style={styles.optionRow}>
+                  <Pressable style={[styles.option, cashCurrency === "TRY" && styles.optionSelected]} onPress={() => setCashCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
+                  <Pressable style={[styles.option, cashCurrency === "USD" && styles.optionSelected]} onPress={() => setCashCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
+                </View>
+                <TextInput value={cashAmount} onChangeText={setCashAmount} placeholder="المبلغ *" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={cashReason} onChangeText={setCashReason} placeholder="السبب *" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
+                  const amount = Number(cashAmount.replace(",", "."));
+                  if (!Number.isFinite(amount) || amount <= 0 || !cashReason.trim()) { setMessage("المبلغ والسبب مطلوبان"); return; }
+                  setBusy(true);
+                  try {
+                    const result = await createCashMovement({
+                      workspaceId: workspace.id,
+                      direction: cashDirection,
+                      currency: cashCurrency,
+                      amountMinor: Math.round(amount * 100),
+                      reason: cashReason.trim(),
+                      idempotencyKey: "cash-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10),
+                    });
+                    setCashMovements(await listCashMovements(workspace.id));
+                    setCashAmount("");
+                    setCashReason("");
+                    setMessage(result.replayed ? "تم استرجاع حركة النقد السابقة" : "تم تسجيل حركة النقد");
+                  } catch (error) {
+                    setMessage("تعذر تسجيل حركة النقد: " + (error instanceof Error ? error.message : "unknown-error"));
+                  } finally { setBusy(false); }
+                }}><Text style={styles.buttonText}>تسجيل حركة نقد</Text></Pressable>
+                <View style={styles.customerList}>
+                  {cashMovements.map((movement) => (
+                    <View key={movement.id} style={styles.customerRow}>
+                      <View style={styles.customerMain}>
+                        <Text style={styles.customerName}>{movement.direction === "in" ? "داخل" : "خارج"} • {movement.reason}</Text>
+                        <Text style={styles.workspaceMeta}>{movement.currency} • {(movement.amountMinor / 100).toFixed(2)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                  {cashMovements.length === 0 && <Text style={styles.workspaceMeta}>لا توجد حركات نقد بعد</Text>}
+                </View>
+              </View>
+
               <View style={styles.profileBox}>
                 <Text
                   style={[
