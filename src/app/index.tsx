@@ -18,10 +18,12 @@ import { firebaseAuth } from "@/lib/firebase";
 import { isRTL, t, type AppLanguage } from "@/lib/i18n";
 import { createCustomer, listCustomers, type Customer } from "@/lib/customers";
 import { listDebts, type Debt } from "@/lib/debts";
-import { closeDay, createCashMovement, createDebt, createJournalEntry, createPayment } from "@/lib/backend";
+import { archiveRecord, closeDay, createCashMovement, createDebt, createJournalEntry, createPayment, createReminder } from "@/lib/backend";
 import { listCashMovements, type CashMovement } from "@/lib/cash";
 import { listJournalEntries, type JournalEntry } from "@/lib/journal";
 import { listDailyClosings, type DailyClosing } from "@/lib/closing";
+import { listReminders, type Reminder } from "@/lib/reminders";
+import { listArchive, type ArchiveRecord } from "@/lib/archive";
 import {
   getStoreProfile,
   saveStoreProfile,
@@ -74,6 +76,11 @@ export default function HomeScreen() {
   const [dailyClosings, setDailyClosings] = useState<DailyClosing[]>([]);
   const [closingTry, setClosingTry] = useState("");
   const [closingUsd, setClosingUsd] = useState("");
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [reminderTitle, setReminderTitle] = useState("");
+  const [reminderNote, setReminderNote] = useState("");
+  const [reminderDueAt, setReminderDueAt] = useState("");
+  const [archiveRecords, setArchiveRecords] = useState<ArchiveRecord[]>([]);
 
   const rtl = isRTL(storeLanguage);
 
@@ -92,7 +99,9 @@ export default function HomeScreen() {
             setDebts(await listDebts(activeWorkspace.id));
             setCashMovements(await listCashMovements(activeWorkspace.id));
             setJournalEntries(await listJournalEntries(activeWorkspace.id));
-            setDailyClosings(await listDailyClosings(activeWorkspace.id)); }
+            setDailyClosings(await listDailyClosings(activeWorkspace.id));
+            setReminders(await listReminders(activeWorkspace.id));
+            setArchiveRecords(await listArchive(activeWorkspace.id)); }
           catch (error) { setMessage("تعذر قراءة العملاء: " + (error instanceof Error ? error.message : "unknown-error")); }
         }
 
@@ -451,6 +460,62 @@ export default function HomeScreen() {
                     </View>
                   ))}
                   {dailyClosings.length === 0 && <Text style={styles.workspaceMeta}>لا توجد أيام مغلقة بعد</Text>}
+                </View>
+              </View>
+
+              <View style={styles.profileBox}>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>التذكيرات</Text>
+                <TextInput value={reminderTitle} onChangeText={setReminderTitle} placeholder="عنوان التذكير *" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={reminderNote} onChangeText={setReminderNote} placeholder="ملاحظة (اختياري)" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={reminderDueAt} onChangeText={setReminderDueAt} placeholder="الموعد: 2026-10-08T15:30" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
+                  if (!reminderTitle.trim()) { setMessage("عنوان التذكير مطلوب"); return; }
+                  const dueAtMs = Date.parse(reminderDueAt.trim());
+                  if (!Number.isFinite(dueAtMs) || dueAtMs <= Date.now()) { setMessage("أدخل موعدًا مستقبليًا صحيحًا"); return; }
+                  setBusy(true);
+                  try {
+                    const result = await createReminder({
+                      workspaceId: workspace.id,
+                      title: reminderTitle.trim(),
+                      note: reminderNote.trim(),
+                      dueAtMs,
+                      idempotencyKey: "reminder-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10),
+                    });
+                    setReminders(await listReminders(workspace.id));
+                    setReminderTitle("");
+                    setReminderNote("");
+                    setReminderDueAt("");
+                    setMessage(result.replayed ? "تم استرجاع التذكير السابق" : "تم إنشاء التذكير");
+                  } catch (error) {
+                    setMessage("تعذر إنشاء التذكير: " + (error instanceof Error ? error.message : "unknown-error"));
+                  } finally { setBusy(false); }
+                }}><Text style={styles.buttonText}>إضافة تذكير</Text></Pressable>
+                <View style={styles.customerList}>
+                  {reminders.slice(0, 10).map((reminder) => (
+                    <View key={reminder.id} style={styles.customerRow}>
+                      <View style={styles.customerMain}>
+                        <Text style={styles.customerName}>{reminder.title}</Text>
+                        <Text style={styles.workspaceMeta}>{reminder.status} • {String(reminder.dueAt)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                  {reminders.length === 0 && <Text style={styles.workspaceMeta}>لا توجد تذكيرات بعد</Text>}
+                </View>
+              </View>
+
+              <View style={styles.profileBox}>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>الأرشيف</Text>
+                <Text style={styles.workspaceMeta}>السجلات المؤرشفة تُحفظ هنا للقراءة فقط.</Text>
+                <View style={styles.customerList}>
+                  {archiveRecords.slice(0, 10).map((record) => (
+                    <View key={record.id} style={styles.customerRow}>
+                      <View style={styles.customerMain}>
+                        <Text style={styles.customerName}>{record.sourceType}</Text>
+                        <Text style={styles.workspaceMeta}>{record.sourceId} • {record.reason}</Text>
+                      </View>
+                    </View>
+                  ))}
+                  {archiveRecords.length === 0 && <Text style={styles.workspaceMeta}>لا توجد سجلات مؤرشفة بعد</Text>}
                 </View>
               </View>
 
