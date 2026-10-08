@@ -101,7 +101,22 @@ export async function createPaymentCommand(uid: string, data: unknown) {
       createdAt: now,
     };
 
+    const cashRef = db.doc(`workspaces/${workspaceId}/cashMovements/payment_${paymentRef.id}`);
+    const cashMovement = {
+      id: cashRef.id,
+      schemaVersion: 1 as const,
+      workspaceId,
+      direction: "in" as const,
+      currency,
+      amountMinor,
+      reason: "customer-payment",
+      sourcePaymentId: paymentRef.id,
+      createdByUid: uid,
+      createdAt: now,
+    };
+
     tx.create(paymentRef, payment);
+    tx.create(cashRef, cashMovement);
     tx.update(debtRef, {
       paidMinor: newPaid,
       remainingMinor: newRemaining,
