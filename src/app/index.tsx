@@ -188,7 +188,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={[styles.container, { direction: rtl ? "rtl" : "ltr" }]}>
+    <ScrollView style={styles.scrollView} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} direction={rtl ? "rtl" : "ltr"}>
       <Text style={styles.title}>{t(storeLanguage, "title")}</Text>
       <Text style={styles.subtitle}>{t(storeLanguage, "subtitle")}</Text>
 
@@ -245,8 +245,8 @@ export default function HomeScreen() {
                   if (!selectedDebt) return null;
                   const customer = customers.find((item) => item.id === selectedDebt.customerId);
                   return <View style={styles.paymentBox}>
-                    <Text style={styles.fieldLabel}>دفعة للعميل: {customer?.name ?? selectedDebt.customerId}</Text>
-                    <Text style={styles.workspaceMeta}>المتبقي: {((selectedDebt.remainingMinor ?? 0) / 100).toFixed(2)} {selectedDebt.currency}</Text>
+                    <Text style={styles.fieldLabel}>{t(storeLanguage, "paymentFor")}: {customer?.name ?? selectedDebt.customerId}</Text>
+                    <Text style={styles.workspaceMeta}>{t(storeLanguage, "remaining")}: {((selectedDebt.remainingMinor ?? 0) / 100).toFixed(2)} {selectedDebt.currency}</Text>
                     <TextInput value={paymentAmount} onChangeText={setPaymentAmount} placeholder=t(storeLanguage, "paymentAmount") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                     <View style={styles.optionRow}>
                       <Pressable style={styles.option} onPress={() => setPaymentDebtId("")}><Text style={styles.optionText}>{t(storeLanguage, "cancel")}</Text></Pressable>
@@ -278,7 +278,7 @@ export default function HomeScreen() {
                     return <View key={debt.id} style={styles.customerRow}>
                       <View style={styles.customerMain}>
                         <Text style={styles.customerName}>{customer?.name ?? debt.customerId}</Text>
-                        <Text style={styles.workspaceMeta}>{debt.currency} • {((debt.remainingMinor ?? 0) / 100).toFixed(2)} متبقٍ</Text>
+                        <Text style={styles.workspaceMeta}>{debt.currency} • {((debt.remainingMinor ?? 0) / 100).toFixed(2)} {t(storeLanguage, "remaining")}</Text>
                       </View>
                       <View style={{ alignItems: "flex-end" }}>
                         <Text style={debt.status === "settled" ? styles.customerActive : styles.workspaceMeta}>{debt.status === "settled" ? t(storeLanguage, "settled") : t(storeLanguage, "open")}</Text>
@@ -292,8 +292,8 @@ export default function HomeScreen() {
               <View style={styles.profileBox}>
                 <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t(storeLanguage, "sectionCustomers")}</Text>
                 <TextInput value={customerName} onChangeText={setCustomerName} placeholder=t(storeLanguage, "customerNameRequiredField") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={customerPhone} onChangeText={setCustomerPhone} placeholder="الهاتف" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={customerAddress} onChangeText={setCustomerAddress} placeholder="العنوان" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={customerPhone} onChangeText={setCustomerPhone} placeholder={t(storeLanguage, "phone")} placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={customerAddress} onChangeText={setCustomerAddress} placeholder={t(storeLanguage, "address")} placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <TextInput value={customerNotes} onChangeText={setCustomerNotes} placeholder=t(storeLanguage, "notes") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                   if (!customerName.trim()) { setMessage(t(storeLanguage, "customerNameRequired")); return; }
