@@ -39,7 +39,7 @@ import {
 export default function HomeScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [workspaceName, setWorkspaceName] = useState(t(storeLanguage, "storeDefault"));
+  const [workspaceName, setWorkspaceName] = useState(t("ar", "storeDefault"));
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [message, setMessage] = useState("");
@@ -453,8 +453,8 @@ export default function HomeScreen() {
                       <View style={styles.customerMain}>
                         <Text style={styles.customerName}>{closing.closingDate}</Text>
                         <Text style={styles.workspaceMeta}>
-                          {closing.balances.TRY !== undefined ? "TRY • " + (closing.balances.TRY / 100).toFixed(2) : ""}
-                          {closing.balances.TRY !== undefined && closing.balances.USD !== undefined ? "   " : ""}
+                          {closing.countedBalances.TRY !== undefined ? "TRY • " + (closing.balances.TRY / 100).toFixed(2) : ""}
+                          {closing.balances.TRY !== undefined && closing.countedBalances.USD !== undefined ? "   " : ""}
                           {closing.balances.USD !== undefined ? "USD • " + (closing.balances.USD / 100).toFixed(2) : ""}
                         </Text>
                       </View>
