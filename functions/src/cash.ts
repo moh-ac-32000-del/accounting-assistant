@@ -61,8 +61,6 @@ export async function createCashMovementCommand(uid: string, data: unknown) {
     if (!Number.isSafeInteger(newBalance) || newBalance < 0) {
       throw new HttpsError("failed-precondition", "invalid-cash-balance");
     }
-      throw new HttpsError("failed-precondition", "invalid-cash-balance");
-    }
 
     const now = Timestamp.now();
     const movement = {
