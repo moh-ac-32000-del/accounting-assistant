@@ -7,6 +7,7 @@ import { createCashMovementCommand } from "./cash";
 import { createJournalEntryCommand } from "./journal";
 import { closeDayCommand } from "./closing";
 import { archiveRecordCommand } from "./archive";
+import { createReminderCommand } from "./reminders";
 
 setGlobalOptions({ region: "europe-west1", maxInstances: 10 });
 
@@ -25,6 +26,11 @@ export const createDebt = onCall(async (request) => {
 export const createPayment = onCall(async (request) => {
   if (!request.auth?.uid) throw new HttpsError("unauthenticated", "authentication-required");
   return createPaymentCommand(request.auth.uid, request.data);
+});
+
+export const createReminder = onCall(async (request) => {
+  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "authentication-required");
+  return createReminderCommand(request.auth.uid, request.data);
 });
 
 export const archiveRecord = onCall(async (request) => {
