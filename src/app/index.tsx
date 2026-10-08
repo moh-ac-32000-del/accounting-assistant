@@ -188,7 +188,7 @@ export default function HomeScreen() {
                   <Pressable style={[styles.option, debtCurrency === "TRY" && styles.optionSelected]} onPress={() => setDebtCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
                   <Pressable style={[styles.option, debtCurrency === "USD" && styles.optionSelected]} onPress={() => setDebtCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
                 </View>
-                <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy || workspace.role === "staff"} onPress={async () => {
+                <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                   const amount = Number(debtAmount.replace(",", "."));
                   if (!debtCustomerId.trim() || !Number.isFinite(amount) || amount <= 0) { setMessage("العميل والمبلغ مطلوبان"); return; }
                   setBusy(true);
@@ -212,7 +212,7 @@ export default function HomeScreen() {
                 <TextInput value={customerPhone} onChangeText={setCustomerPhone} placeholder="الهاتف" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <TextInput value={customerAddress} onChangeText={setCustomerAddress} placeholder="العنوان" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <TextInput value={customerNotes} onChangeText={setCustomerNotes} placeholder="ملاحظات" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy || workspace.role === "staff"} onPress={async () => {
+                <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                   if (!customerName.trim()) { setMessage("اسم العميل مطلوب"); return; }
                   setBusy(true);
                   try {
