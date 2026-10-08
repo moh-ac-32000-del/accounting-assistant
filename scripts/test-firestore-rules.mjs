@@ -181,6 +181,19 @@ try {
   });
 
   await assertSucceeds(getDoc(debtRef));
+
+  const paymentRef = doc(aliceDb, "workspaces", thirdWorkspaceId, "payments", "payment-a");
+  await assertFails(setDoc(paymentRef, {
+    schemaVersion: 1,
+    workspaceId: thirdWorkspaceId,
+    debtId: "debt-a",
+    customerId: "customer-a",
+    currency: "TRY",
+    amountMinor: 5000,
+    createdByUid: aliceUid,
+    createdAt: "test",
+  }));
+
   await assertFails(updateDoc(debtRef, { remainingMinor: 5000 }));
   await assertFails(setDoc(
     doc(aliceDb, "workspaces", thirdWorkspaceId, "operationReceipts", "receipt-a"),
