@@ -233,7 +233,7 @@ export default function HomeScreen() {
                             amountMinor: Math.round(amount * 100),
                             idempotencyKey: "payment-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10),
                           });
-                          setDebts((current) => current.map((item) => item.id === selectedDebt.id ? result.payment ? { ...item, paidMinor: item.paidMinor + Math.round(amount * 100), remainingMinor: item.remainingMinor - Math.round(amount * 100), status: item.remainingMinor - Math.round(amount * 100) === 0 ? "settled" : "open" } : item : item));
+                          setDebts(await listDebts(workspace.id));
                           setPaymentAmount("");
                           setPaymentDebtId("");
                           setMessage(result.replayed ? "تم استرجاع الدفعة السابقة" : "تم تسجيل الدفعة");
