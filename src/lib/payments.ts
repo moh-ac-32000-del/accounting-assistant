@@ -1,10 +1,5 @@
-export type CreatePaymentInput = {
-  workspaceId: string;
-  debtId: string;
-  currency: "TRY" | "USD";
-  amountMinor: number;
-  idempotencyKey: string;
-};
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
+import { firebaseAuth, firestoreDb } from "@/lib/firebase";
 
 export type Payment = {
   id: string;
@@ -17,3 +12,14 @@ export type Payment = {
   createdByUid: string;
   createdAt: unknown;
 };
+
+function requireUid() {
+  if (!firebaseAuth.currentUser?.uid) throw new Error("unauthenticated");
+}
+
+export async function listPaymentsForDebt(workspaceId: string, debtId: string): Promise<Payment[]> {
+  requireUid();
+  const ref = collection(firestoreDb, "workspaces", workspaceId, "payments");
+  const snapshot = await getDocs(query(ref, where("debtId", "==", debtId), orderBy("createdAt", "desc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as Payment));
+}
