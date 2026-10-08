@@ -23,7 +23,10 @@ export async function createPaymentCommand(uid: string, data: unknown) {
   const amountMinor = input.amountMinor;
   const idempotencyKey = input.idempotencyKey;
 
-  await requireActiveMember(uid, workspaceId);
+  const member = await requireActiveMember(uid, workspaceId);
+  if (member.role !== "owner" && member.role !== "admin") {
+    throw new HttpsError("permission-denied", "payment-role-required");
+  }
   if (!debtId) throw new HttpsError("invalid-argument", "debt-id-required");
   if (currency !== "TRY" && currency !== "USD") {
     throw new HttpsError("invalid-argument", "invalid-currency");
