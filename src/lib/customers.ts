@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDocs,
   getDoc,
   serverTimestamp,
   setDoc,
@@ -36,13 +37,7 @@ function customersRef(workspaceId: string) {
 }
 
 function customerRef(workspaceId: string, customerId: string) {
-  return doc(
-    firestoreDb,
-    "workspaces",
-    workspaceId,
-    "customers",
-    customerId,
-  );
+  return doc(firestoreDb, "workspaces", workspaceId, "customers", customerId);
 }
 
 function toCustomer(id: string, data: DocumentData): Customer {
@@ -61,13 +56,20 @@ function toCustomer(id: string, data: DocumentData): Customer {
   };
 }
 
+export async function listCustomers(workspaceId: string): Promise<Customer[]> {
+  requireUid();
+  const snapshot = await getDocs(customersRef(workspaceId));
+  return snapshot.docs
+    .map((item) => toCustomer(item.id, item.data()))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export async function createCustomer(
   workspaceId: string,
   input: Pick<Customer, "name" | "phone" | "address" | "notes">,
 ): Promise<Customer> {
   const uid = requireUid();
   const name = input.name.trim();
-
   if (!name) throw new Error("customer-name-required");
 
   const ref = await addDoc(customersRef(workspaceId), {
@@ -84,10 +86,7 @@ export async function createCustomer(
   });
 
   const snapshot = await getDoc(ref);
-  if (!snapshot.exists()) {
-    throw new Error("customer-create-readback-failed");
-  }
-
+  if (!snapshot.exists()) throw new Error("customer-create-readback-failed");
   return toCustomer(snapshot.id, snapshot.data());
 }
 
@@ -96,10 +95,8 @@ export async function getCustomer(
   customerId: string,
 ): Promise<Customer | null> {
   requireUid();
-
   const snapshot = await getDoc(customerRef(workspaceId, customerId));
   if (!snapshot.exists()) return null;
-
   return toCustomer(snapshot.id, snapshot.data());
 }
 
@@ -110,7 +107,6 @@ export async function updateCustomer(
 ): Promise<Customer> {
   const uid = requireUid();
   const name = input.name.trim();
-
   if (!name) throw new Error("customer-name-required");
 
   await setDoc(
@@ -129,6 +125,5 @@ export async function updateCustomer(
 
   const snapshot = await getDoc(customerRef(workspaceId, customerId));
   if (!snapshot.exists()) throw new Error("customer-update-readback-failed");
-
   return toCustomer(snapshot.id, snapshot.data());
 }
