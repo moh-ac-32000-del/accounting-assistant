@@ -3,21 +3,48 @@ import { firebaseApp } from "@/lib/firebase";
 
 const functions = getFunctions(firebaseApp, "europe-west1");
 
-type BackendHealthResponse = {
+export type BackendHealthResponse = {
   ok: boolean;
   uid: string;
   workspaceId: string;
   role: "owner" | "admin" | "staff";
 };
 
-export async function checkBackendHealth(
-  workspaceId: string,
-): Promise<BackendHealthResponse> {
-  const command = httpsCallable<
-    { workspaceId: string },
-    BackendHealthResponse
-  >(functions, "backendHealth");
+export type CreateDebtInput = {
+  workspaceId: string;
+  customerId: string;
+  currency: "TRY" | "USD";
+  amountMinor: number;
+  idempotencyKey: string;
+};
 
-  const result = await command({ workspaceId });
-  return result.data;
+export type Debt = {
+  id: string;
+  schemaVersion: 1;
+  workspaceId: string;
+  customerId: string;
+  currency: "TRY" | "USD";
+  amountMinor: number;
+  paidMinor: number;
+  remainingMinor: number;
+  status: "open" | "settled";
+  createdByUid: string;
+  createdAt: unknown;
+  updatedAt: unknown;
+};
+
+export async function checkBackendHealth(workspaceId: string): Promise<BackendHealthResponse> {
+  const command = httpsCallable<{ workspaceId: string }, BackendHealthResponse>(
+    functions,
+    "backendHealth",
+  );
+  return (await command({ workspaceId })).data;
+}
+
+export async function createDebt(input: CreateDebtInput) {
+  const command = httpsCallable<CreateDebtInput, { ok: true; debt: Debt; replayed: boolean }>(
+    functions,
+    "createDebt",
+  );
+  return (await command(input)).data;
 }

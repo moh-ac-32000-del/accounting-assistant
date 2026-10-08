@@ -144,6 +144,18 @@ Every financial command must consider:
 
 Idempotency keys should be used for commands where retries can repeat a mutation.
 
+## 6.1 Financial amount representation
+
+Financial amounts are stored as integer minor units, never floating-point major-unit values.
+
+- TRY: 1 TRY = 100 minor units (kuruş).
+- USD: 1 USD = 100 minor units (cents).
+- Commands accept positive safe integers for monetary amounts.
+- Derived balances are calculated from integer minor units.
+- Display formatting converts minor units to the selected currency representation only at the presentation boundary.
+
+This policy is the baseline for Debts and Payments and may be extended explicitly if a future currency requires a different minor-unit scale.
+
 ## 7. Offline behavior
 
 The application may remain usable for cached reads and drafts.
