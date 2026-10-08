@@ -108,3 +108,36 @@ export async function closeDay(input: CloseDayInput) {
   );
   return (await command(input)).data;
 }
+
+
+export type CreateReminderInput = {
+  workspaceId: string;
+  title: string;
+  note: string;
+  dueAtMs: number;
+  idempotencyKey: string;
+};
+
+export async function createReminder(input: CreateReminderInput) {
+  const command = httpsCallable<CreateReminderInput, { ok: true; reminder: unknown; replayed: boolean }>(
+    functions,
+    "createReminder",
+  );
+  return (await command(input)).data;
+}
+
+export type ArchiveRecordInput = {
+  workspaceId: string;
+  sourceType: string;
+  sourceId: string;
+  reason: string;
+  idempotencyKey: string;
+};
+
+export async function archiveRecord(input: ArchiveRecordInput) {
+  const command = httpsCallable<ArchiveRecordInput, { ok: true; archive: unknown; replayed: boolean }>(
+    functions,
+    "archiveRecord",
+  );
+  return (await command(input)).data;
+}
