@@ -14,13 +14,5 @@
         }
       ]
     }
-  ],
-  "fieldOverrides": [
-    {
-      "collectionGroup": "archive",
-      "fieldPath": "expireAt",
-      "ttl": true,
-      "indexes": []
-    }
   ]
 }

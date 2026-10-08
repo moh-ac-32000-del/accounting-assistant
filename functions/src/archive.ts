@@ -21,9 +21,6 @@ export async function archiveRecordCommand(uid: string, data: unknown) {
   if (!["debts", "payments", "cashMovements", "journalEntries", "dailyClosings"].includes(sourceType)) {
     throw new HttpsError("invalid-argument", "invalid-archive-source-type");
   }
-  if (!["customers", "debts", "payments", "cashMovements", "journalEntries", "reminders"].includes(sourceType)) {
-    throw new HttpsError("invalid-argument", "archive-source-type-not-allowed");
-  }
   if (!validKey(idempotencyKey)) throw new HttpsError("invalid-argument", "invalid-idempotency-key");
 
   const sourceRef = db.doc(`workspaces/${workspaceId}/${sourceType}/${sourceId}`);
@@ -46,7 +43,6 @@ export async function archiveRecordCommand(uid: string, data: unknown) {
     if (!source.exists) throw new HttpsError("not-found", "archive-source-not-found");
 
     const now = Timestamp.now();
-    const expireAt = Timestamp.fromMillis(now.toMillis() + 3 * 24 * 60 * 60 * 1000);
     const archive = {
       id: archiveRef.id,
       schemaVersion: 1 as const,
@@ -57,13 +53,12 @@ export async function archiveRecordCommand(uid: string, data: unknown) {
       snapshot: source.data(),
       archivedByUid: uid,
       archivedAt: now,
-      expireAt,
     };
 
     tx.create(archiveRef, archive);
     tx.create(db.doc(`workspaces/${workspaceId}/auditEvents/archive_${archiveRef.id}`), {
       schemaVersion: 1, type: "archiveRecord", uid, workspaceId,
-      entityId: archiveRef.id, sourceType, sourceId, reason, expireAt, createdAt: now,
+      entityId: archiveRef.id, sourceType, sourceId, reason, createdAt: now,
     });
     tx.create(receiptRef, {
       schemaVersion: 1, type: "archiveRecord", idempotencyKey, uid,
