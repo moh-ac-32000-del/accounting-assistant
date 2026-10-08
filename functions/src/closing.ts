@@ -48,7 +48,7 @@ export async function closeDayCommand(uid: string, data: unknown) {
     const receipt = await tx.get(receiptRef);
     if (receipt.exists) {
       const r = receipt.data() ?? {};
-      if (r.type !== "closeDay" || r.closingDate !== closingDate || r.balancesHash !== JSON.stringify(normalized)) {
+      if (r.type !== "closeDay" || r.closingDate !== closingDate || r.balancesHash !== JSON.stringify({ countedBalances: normalized, expectedBalances: r.expectedBalances })) {
         throw new HttpsError("already-exists", "idempotency-key-conflict");
       }
       const existing = await tx.get(closingRef);
