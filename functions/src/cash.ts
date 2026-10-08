@@ -59,6 +59,10 @@ export async function createCashMovementCommand(uid: string, data: unknown) {
     };
 
     tx.create(movementRef, movement);
+    tx.create(db.doc(`workspaces/${workspaceId}/auditEvents/${movementRef.id}`), {
+      schemaVersion: 1, type: "createCashMovement", uid, workspaceId, entityId: movementRef.id,
+      direction, amountMinor, currency, reason, createdAt: now,
+    });
     tx.create(receiptRef, {
       schemaVersion: 1,
       type: "createCashMovement",
