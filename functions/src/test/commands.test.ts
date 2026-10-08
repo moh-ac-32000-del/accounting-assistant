@@ -103,7 +103,7 @@ async function main() {
       workspaceId, debtId: firstDebt.debt.id, currency: "TRY", amountMinor: 1000,
       idempotencyKey: "payment-staff",
     }),
-    "failed-precondition",
+    "permission-denied",
   );
 
   const closing = await closeDayCommand(ownerUid, {
@@ -129,8 +129,7 @@ async function main() {
 
   console.log("Trusted financial command tests passed.");
 }
-
 main().catch((error) => {
   console.error(error);
-  process.exitCode = 1;
+  process.exit(1);
 });
