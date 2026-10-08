@@ -76,7 +76,7 @@ export async function createPaymentCommand(uid: string, data: unknown) {
       throw new HttpsError("failed-precondition", "invalid-debt");
     }
     const paidMinor = debt.paidMinor;
-    if (!validAmount(debt.amountMinor) || !Number.isSafeInteger(paidMinor) || paidMinor < 0 || !validAmount(debt.remainingMinor) || debt.amountMinor !== paidMinor + debt.remainingMinor) {
+    if (!validAmount(debt.amountMinor) || typeof paidMinor !== "number" || !Number.isSafeInteger(paidMinor) || paidMinor < 0 || !validAmount(debt.remainingMinor) || debt.amountMinor !== paidMinor + debt.remainingMinor) {
       throw new HttpsError("failed-precondition", "invalid-debt-balance");
     }
     if (debt.currency !== currency) {
