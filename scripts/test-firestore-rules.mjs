@@ -149,6 +149,44 @@ try {
   await assertFails(getDoc(doc(aliceDb, "debts", "future-debt")));
   await assertFails(getDoc(doc(aliceDb, "payments", "future-payment")));
 
+  const debtRef = doc(aliceDb, "workspaces", thirdWorkspaceId, "debts", "debt-a");
+  await assertFails(setDoc(debtRef, {
+    schemaVersion: 1,
+    workspaceId: thirdWorkspaceId,
+    customerId: "customer-a",
+    currency: "TRY",
+    amountMinor: 10000,
+    paidMinor: 0,
+    remainingMinor: 10000,
+    status: "open",
+    createdByUid: aliceUid,
+    createdAt: "test",
+    updatedAt: "test",
+  }));
+
+  await testEnv.withSecurityRulesDisabled(async (admin) => {
+    await setDoc(doc(admin.firestore(), "workspaces", thirdWorkspaceId, "debts", "debt-a"), {
+      schemaVersion: 1,
+      workspaceId: thirdWorkspaceId,
+      customerId: "customer-a",
+      currency: "TRY",
+      amountMinor: 10000,
+      paidMinor: 0,
+      remainingMinor: 10000,
+      status: "open",
+      createdByUid: aliceUid,
+      createdAt: "test",
+      updatedAt: "test",
+    });
+  });
+
+  await assertSucceeds(getDoc(debtRef));
+  await assertFails(updateDoc(debtRef, { remainingMinor: 5000 }));
+  await assertFails(setDoc(
+    doc(aliceDb, "workspaces", thirdWorkspaceId, "operationReceipts", "receipt-a"),
+    { type: "createDebt" },
+  ));
+
   console.log("Firestore Security Rules tests passed.");
 } finally {
   await testEnv.cleanup();
