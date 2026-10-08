@@ -7,7 +7,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:commands": "npm run build && FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 node lib/test/commands.test.js"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0",
