@@ -30,3 +30,6 @@ jobs:
       - name: Build functions
         working-directory: functions
         run: npm run build
+
+      - name: Run trusted command tests
+        run: npx --yes firebase-tools@15.32.1 emulators:exec --only firestore "npm --prefix functions run test:commands"
