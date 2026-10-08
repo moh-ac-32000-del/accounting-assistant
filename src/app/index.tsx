@@ -18,7 +18,7 @@ import { firebaseAuth } from "@/lib/firebase";
 import { isRTL, t, type AppLanguage } from "@/lib/i18n";
 import { createCustomer, listCustomers, type Customer } from "@/lib/customers";
 import { listDebts, type Debt } from "@/lib/debts";
-import { createDebt } from "@/lib/backend";
+import { createDebt, createPayment } from "@/lib/backend";
 import {
   getStoreProfile,
   saveStoreProfile,
@@ -56,6 +56,8 @@ export default function HomeScreen() {
   const [debtCustomerId, setDebtCustomerId] = useState("");
   const [debtAmount, setDebtAmount] = useState("");
   const [debtCurrency, setDebtCurrency] = useState<"TRY" | "USD">("TRY");
+  const [paymentDebtId, setPaymentDebtId] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
 
   const rtl = isRTL(storeLanguage);
 
@@ -182,7 +184,15 @@ export default function HomeScreen() {
 
               <View style={styles.profileBox}>
                 <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>الديون</Text>
-                <TextInput value={debtCustomerId} onChangeText={setDebtCustomerId} placeholder="معرّف العميل *" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <Text style={styles.fieldLabel}>اختر العميل *</Text>
+                <View style={styles.customerPicker}>
+                  {customers.filter((customer) => customer.status === "active").map((customer) => (
+                    <Pressable key={customer.id} style={[styles.customerChoice, debtCustomerId === customer.id && styles.optionSelected]} onPress={() => setDebtCustomerId(customer.id)}>
+                      <Text style={styles.customerChoiceText}>{customer.name}</Text>
+                    </Pressable>
+                  ))}
+                  {customers.filter((customer) => customer.status === "active").length === 0 && <Text style={styles.workspaceMeta}>أضف عميلًا أولًا</Text>}
+                </View>
                 <TextInput value={debtAmount} onChangeText={setDebtAmount} placeholder="مبلغ الدين" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <View style={styles.optionRow}>
                   <Pressable style={[styles.option, debtCurrency === "TRY" && styles.optionSelected]} onPress={() => setDebtCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
@@ -201,8 +211,52 @@ export default function HomeScreen() {
                   } catch (error) { setMessage("تعذر تسجيل الدين: " + (error instanceof Error ? error.message : "unknown-error")); }
                   finally { setBusy(false); }
                 }}><Text style={styles.buttonText}>تسجيل دين</Text></Pressable>
+                {paymentDebtId && (() => {
+                  const selectedDebt = debts.find((debt) => debt.id === paymentDebtId);
+                  if (!selectedDebt) return null;
+                  const customer = customers.find((item) => item.id === selectedDebt.customerId);
+                  return <View style={styles.paymentBox}>
+                    <Text style={styles.fieldLabel}>دفعة للعميل: {customer?.name ?? selectedDebt.customerId}</Text>
+                    <Text style={styles.workspaceMeta}>المتبقي: {((selectedDebt.remainingMinor ?? 0) / 100).toFixed(2)} {selectedDebt.currency}</Text>
+                    <TextInput value={paymentAmount} onChangeText={setPaymentAmount} placeholder="مبلغ الدفعة" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                    <View style={styles.optionRow}>
+                      <Pressable style={styles.option} onPress={() => setPaymentDebtId("")}><Text style={styles.optionText}>إلغاء</Text></Pressable>
+                      <Pressable style={[styles.option, styles.optionSelected]} onPress={async () => {
+                        const amount = Number(paymentAmount.replace(",", "."));
+                        if (!Number.isFinite(amount) || amount <= 0) { setMessage("مبلغ الدفعة مطلوب"); return; }
+                        setBusy(true);
+                        try {
+                          const result = await createPayment({
+                            workspaceId: workspace.id,
+                            debtId: selectedDebt.id,
+                            currency: selectedDebt.currency,
+                            amountMinor: Math.round(amount * 100),
+                            idempotencyKey: "payment-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10),
+                          });
+                          setDebts((current) => current.map((item) => item.id === selectedDebt.id ? result.payment ? { ...item, paidMinor: item.paidMinor + Math.round(amount * 100), remainingMinor: item.remainingMinor - Math.round(amount * 100), status: item.remainingMinor - Math.round(amount * 100) === 0 ? "settled" : "open" } : item : item));
+                          setPaymentAmount("");
+                          setPaymentDebtId("");
+                          setMessage(result.replayed ? "تم استرجاع الدفعة السابقة" : "تم تسجيل الدفعة");
+                        } catch (error) { setMessage("تعذر تسجيل الدفعة: " + (error instanceof Error ? error.message : "unknown-error")); }
+                        finally { setBusy(false); }
+                      }}><Text style={styles.optionText}>تأكيد الدفعة</Text></Pressable>
+                    </View>
+                  </View>;
+                })()}
                 <View style={styles.customerList}>
-                  {debts.map((debt) => <View key={debt.id} style={styles.customerRow}><View style={styles.customerMain}><Text style={styles.customerName}>{debt.customerId}</Text><Text style={styles.workspaceMeta}>{debt.currency} • {((debt.remainingMinor ?? 0) / 100).toFixed(2)} متبقٍ</Text></View><Text style={debt.status === "settled" ? styles.customerActive : styles.workspaceMeta}>{debt.status === "settled" ? "مسدد" : "مفتوح"}</Text></View>)}
+                  {debts.map((debt) => {
+                    const customer = customers.find((item) => item.id === debt.customerId);
+                    return <View key={debt.id} style={styles.customerRow}>
+                      <View style={styles.customerMain}>
+                        <Text style={styles.customerName}>{customer?.name ?? debt.customerId}</Text>
+                        <Text style={styles.workspaceMeta}>{debt.currency} • {((debt.remainingMinor ?? 0) / 100).toFixed(2)} متبقٍ</Text>
+                      </View>
+                      <View style={{ alignItems: "flex-end" }}>
+                        <Text style={debt.status === "settled" ? styles.customerActive : styles.workspaceMeta}>{debt.status === "settled" ? "مسدد" : "مفتوح"}</Text>
+                        {debt.status === "open" && <Pressable onPress={() => setPaymentDebtId(debt.id)}><Text style={styles.link}>تسجيل دفعة</Text></Pressable>}
+                      </View>
+                    </View>;
+                  })}
                 </View>
               </View>
 
@@ -643,6 +697,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center",
   },
+  fieldLabel: { color: "#d4a72c", fontSize: 13, fontWeight: "700", marginBottom: 8 },
+  customerPicker: { gap: 8, marginBottom: 12 },
+  customerChoice: { minHeight: 44, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: "#3a4048", justifyContent: "center", backgroundColor: "#191c20" },
+  customerChoiceText: { color: "#ffffff", fontSize: 14, fontWeight: "600" },
+  paymentBox: { marginTop: 12, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "#d4a72c", backgroundColor: "#211d10" },
   customerList: { marginTop: 14, gap: 8 },
   customerRow: { minHeight: 56, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: "#30363d", backgroundColor: "#191c20", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   customerMain: { flex: 1 },
