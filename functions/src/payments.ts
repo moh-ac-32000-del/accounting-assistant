@@ -88,8 +88,11 @@ export async function createPaymentCommand(uid: string, data: unknown) {
       throw new HttpsError("failed-precondition", "payment-exceeds-remaining-debt");
     }
 
-    const newPaid = (debt.paidMinor ?? 0) + amountMinor;
+    const newPaid = debt.paidMinor + amountMinor;
     const newRemaining = debt.remainingMinor - amountMinor;
+    if (!Number.isSafeInteger(newPaid) || !Number.isSafeInteger(newRemaining) || newRemaining < 0 || newPaid + newRemaining !== debt.amountMinor) {
+      throw new HttpsError("failed-precondition", "invalid-debt-balance");
+    }
     const now = Timestamp.now();
 
     const payment = {
