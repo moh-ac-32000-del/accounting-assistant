@@ -60,6 +60,10 @@ export async function createDebtCommand(uid: string, data: unknown) {
       createdByUid: uid, createdAt: now, updatedAt: now,
     };
     tx.create(debtRef, debt);
+    tx.create(db.doc(`workspaces/${workspaceId}/auditEvents/${debtRef.id}`), {
+      schemaVersion: 1, type: "createDebt", uid, workspaceId, entityId: debtRef.id,
+      amountMinor, currency, customerId, createdAt: now,
+    });
     tx.create(receiptRef, { schemaVersion: 1, type: "createDebt", idempotencyKey, uid, debtId: debtRef.id, customerId, currency, amountMinor, createdAt: now });
     return { ok: true as const, debt, replayed: false };
   });
