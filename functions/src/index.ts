@@ -2,6 +2,7 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { requireActiveMember } from "./auth";
 import { createDebtCommand } from "./debts";
+import { createPaymentCommand } from "./payments";
 
 setGlobalOptions({ region: "europe-west1", maxInstances: 10 });
 
@@ -15,4 +16,9 @@ export const backendHealth = onCall(async (request) => {
 export const createDebt = onCall(async (request) => {
   if (!request.auth?.uid) throw new HttpsError("unauthenticated", "authentication-required");
   return createDebtCommand(request.auth.uid, request.data);
+});
+
+export const createPayment = onCall(async (request) => {
+  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "authentication-required");
+  return createPaymentCommand(request.auth.uid, request.data);
 });
