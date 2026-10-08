@@ -222,7 +222,7 @@ export default function HomeScreen() {
                   ))}
                   {customers.filter((customer) => customer.status === "active").length === 0 && <Text style={styles.workspaceMeta}>{t(storeLanguage, "addCustomerFirst")}</Text>}
                 </View>
-                <TextInput value={debtAmount} onChangeText={setDebtAmount} placeholder=t(storeLanguage, "debtAmount") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={debtAmount} onChangeText={setDebtAmount} placeholder={t(storeLanguage, "debtAmount")} placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <View style={styles.optionRow}>
                   <Pressable style={[styles.option, debtCurrency === "TRY" && styles.optionSelected]} onPress={() => setDebtCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
                   <Pressable style={[styles.option, debtCurrency === "USD" && styles.optionSelected]} onPress={() => setDebtCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
@@ -247,7 +247,7 @@ export default function HomeScreen() {
                   return <View style={styles.paymentBox}>
                     <Text style={styles.fieldLabel}>{t(storeLanguage, "paymentFor")}: {customer?.name ?? selectedDebt.customerId}</Text>
                     <Text style={styles.workspaceMeta}>{t(storeLanguage, "remaining")}: {((selectedDebt.remainingMinor ?? 0) / 100).toFixed(2)} {selectedDebt.currency}</Text>
-                    <TextInput value={paymentAmount} onChangeText={setPaymentAmount} placeholder=t(storeLanguage, "paymentAmount") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                    <TextInput value={paymentAmount} onChangeText={setPaymentAmount} placeholder={t(storeLanguage, "paymentAmount")} placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                     <View style={styles.optionRow}>
                       <Pressable style={styles.option} onPress={() => setPaymentDebtId("")}><Text style={styles.optionText}>{t(storeLanguage, "cancel")}</Text></Pressable>
                       <Pressable style={[styles.option, styles.optionSelected]} onPress={async () => {
@@ -291,10 +291,10 @@ export default function HomeScreen() {
 
               <View style={styles.profileBox}>
                 <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t(storeLanguage, "sectionCustomers")}</Text>
-                <TextInput value={customerName} onChangeText={setCustomerName} placeholder=t(storeLanguage, "customerNameRequiredField") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={customerName} onChangeText={setCustomerName} placeholder={t(storeLanguage, "customerNameRequiredField")} placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <TextInput value={customerPhone} onChangeText={setCustomerPhone} placeholder={t(storeLanguage, "phone")} placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <TextInput value={customerAddress} onChangeText={setCustomerAddress} placeholder={t(storeLanguage, "address")} placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={customerNotes} onChangeText={setCustomerNotes} placeholder=t(storeLanguage, "notes") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={customerNotes} onChangeText={setCustomerNotes} placeholder={t(storeLanguage, "notes")} placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                   if (!customerName.trim()) { setMessage(t(storeLanguage, "customerNameRequired")); return; }
                   setBusy(true);
@@ -332,8 +332,8 @@ export default function HomeScreen() {
                   <Pressable style={[styles.option, cashCurrency === "TRY" && styles.optionSelected]} onPress={() => setCashCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
                   <Pressable style={[styles.option, cashCurrency === "USD" && styles.optionSelected]} onPress={() => setCashCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
                 </View>
-                <TextInput value={cashAmount} onChangeText={setCashAmount} placeholder=t(storeLanguage, "amountRequiredField") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={cashReason} onChangeText={setCashReason} placeholder=t(storeLanguage, "reasonRequiredField") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={cashAmount} onChangeText={setCashAmount} placeholder={t(storeLanguage, "amountRequiredField")} placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={cashReason} onChangeText={setCashReason} placeholder={t(storeLanguage, "reasonRequiredField")} placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                   const amount = Number(cashAmount.replace(",", "."));
                   if (!Number.isFinite(amount) || amount <= 0 || !cashReason.trim()) { setMessage(t(storeLanguage, "amountReasonRequired")); return; }
@@ -378,8 +378,8 @@ export default function HomeScreen() {
                   <Pressable style={[styles.option, journalCurrency === "TRY" && styles.optionSelected]} onPress={() => setJournalCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
                   <Pressable style={[styles.option, journalCurrency === "USD" && styles.optionSelected]} onPress={() => setJournalCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
                 </View>
-                <TextInput value={journalAmount} onChangeText={setJournalAmount} placeholder=t(storeLanguage, "amountRequiredField") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={journalReason} onChangeText={setJournalReason} placeholder=t(storeLanguage, "reasonRequiredField") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={journalAmount} onChangeText={setJournalAmount} placeholder={t(storeLanguage, "amountRequiredField")} placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={journalReason} onChangeText={setJournalReason} placeholder={t(storeLanguage, "reasonRequiredField")} placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                   const amount = Number(journalAmount.replace(",", "."));
                   if (!Number.isFinite(amount) || amount <= 0 || !journalReason.trim()) { setMessage(t(storeLanguage, "amountReasonRequired")); return; }
@@ -417,8 +417,8 @@ export default function HomeScreen() {
               <View style={styles.profileBox}>
                 <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t(storeLanguage, "sectionClosing")}</Text>
                 {workspace.role === "owner" || workspace.role === "admin" ? <>
-                  <TextInput value={closingTry} onChangeText={setClosingTry} placeholder=t(storeLanguage, "actualTry") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                  <TextInput value={closingUsd} onChangeText={setClosingUsd} placeholder=t(storeLanguage, "actualUsd") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                  <TextInput value={closingTry} onChangeText={setClosingTry} placeholder={t(storeLanguage, "actualTry")} placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                  <TextInput value={closingUsd} onChangeText={setClosingUsd} placeholder={t(storeLanguage, "actualUsd")} placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                   <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                     const tryAmount = Number(closingTry.replace(",", "."));
                     const usdAmount = closingUsd.trim() ? Number(closingUsd.replace(",", ".")) : 0;
@@ -466,9 +466,9 @@ export default function HomeScreen() {
 
               <View style={styles.profileBox}>
                 <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t(storeLanguage, "sectionReminders")}</Text>
-                <TextInput value={reminderTitle} onChangeText={setReminderTitle} placeholder=t(storeLanguage, "reminderTitleField") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={reminderNote} onChangeText={setReminderNote} placeholder=t(storeLanguage, "reminderNoteField") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={reminderDueAt} onChangeText={setReminderDueAt} placeholder=t(storeLanguage, "reminderDuePlaceholder") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={reminderTitle} onChangeText={setReminderTitle} placeholder={t(storeLanguage, "reminderTitleField")} placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={reminderNote} onChangeText={setReminderNote} placeholder={t(storeLanguage, "reminderNoteField")} placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={reminderDueAt} onChangeText={setReminderDueAt} placeholder={t(storeLanguage, "reminderDuePlaceholder")} placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                   if (!reminderTitle.trim()) { setMessage(t(storeLanguage, "reminderTitleRequired")); return; }
                   const dueAtMs = Date.parse(reminderDueAt.trim());
