@@ -13,6 +13,7 @@ import {
   Text,
   TextInput,
   View,
+  ScrollView,
 } from "react-native";
 import { firebaseAuth } from "@/lib/firebase";
 import { isRTL, t, type AppLanguage } from "@/lib/i18n";
@@ -38,7 +39,7 @@ import {
 export default function HomeScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [workspaceName, setWorkspaceName] = useState("متجري");
+  const [workspaceName, setWorkspaceName] = useState(t(storeLanguage, "storeDefault"));
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [message, setMessage] = useState("");
@@ -102,7 +103,7 @@ export default function HomeScreen() {
             setDailyClosings(await listDailyClosings(activeWorkspace.id));
             setReminders(await listReminders(activeWorkspace.id));
             setArchiveRecords(await listArchive(activeWorkspace.id)); }
-          catch (error) { setMessage("تعذر قراءة العملاء: " + (error instanceof Error ? error.message : "unknown-error")); }
+          catch (error) { setMessage(t(storeLanguage, "customersReadFailed") + ": " + (error instanceof Error ? error.message : "unknown-error")); }
         }
 
         if (activeWorkspace) {
@@ -211,34 +212,34 @@ export default function HomeScreen() {
 
 
               <View style={styles.profileBox}>
-                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>الديون</Text>
-                <Text style={styles.fieldLabel}>اختر العميل *</Text>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t(storeLanguage, "sectionDebts")}</Text>
+                <Text style={styles.fieldLabel}>{t(storeLanguage, "chooseCustomer")}</Text>
                 <View style={styles.customerPicker}>
                   {customers.filter((customer) => customer.status === "active").map((customer) => (
                     <Pressable key={customer.id} style={[styles.customerChoice, debtCustomerId === customer.id && styles.optionSelected]} onPress={() => setDebtCustomerId(customer.id)}>
                       <Text style={styles.customerChoiceText}>{customer.name}</Text>
                     </Pressable>
                   ))}
-                  {customers.filter((customer) => customer.status === "active").length === 0 && <Text style={styles.workspaceMeta}>أضف عميلًا أولًا</Text>}
+                  {customers.filter((customer) => customer.status === "active").length === 0 && <Text style={styles.workspaceMeta}>{t(storeLanguage, "addCustomerFirst")}</Text>}
                 </View>
-                <TextInput value={debtAmount} onChangeText={setDebtAmount} placeholder="مبلغ الدين" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={debtAmount} onChangeText={setDebtAmount} placeholder=t(storeLanguage, "debtAmount") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <View style={styles.optionRow}>
                   <Pressable style={[styles.option, debtCurrency === "TRY" && styles.optionSelected]} onPress={() => setDebtCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
                   <Pressable style={[styles.option, debtCurrency === "USD" && styles.optionSelected]} onPress={() => setDebtCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
                 </View>
                 <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                   const amount = Number(debtAmount.replace(",", "."));
-                  if (!debtCustomerId.trim() || !Number.isFinite(amount) || amount <= 0) { setMessage("العميل والمبلغ مطلوبان"); return; }
+                  if (!debtCustomerId.trim() || !Number.isFinite(amount) || amount <= 0) { setMessage(t(storeLanguage, "customerAmountRequired")); return; }
                   setBusy(true);
                   try {
                     const amountMinor = Math.round(amount * 100);
                     const result = await createDebt({ workspaceId: workspace.id, customerId: debtCustomerId.trim(), currency: debtCurrency, amountMinor, idempotencyKey: "debt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10) });
                     setDebts((current) => [result.debt, ...current]);
                     setDebtAmount("");
-                    setMessage(result.replayed ? "تم استرجاع عملية الدين السابقة" : "تم تسجيل الدين");
-                  } catch (error) { setMessage("تعذر تسجيل الدين: " + (error instanceof Error ? error.message : "unknown-error")); }
+                    setMessage(result.replayed ? t(storeLanguage, "debtReplay") : t(storeLanguage, "debtCreated"));
+                  } catch (error) { setMessage(t(storeLanguage, "debtCreateFailed") + ": " + (error instanceof Error ? error.message : "unknown-error")); }
                   finally { setBusy(false); }
-                }}><Text style={styles.buttonText}>تسجيل دين</Text></Pressable>
+                }}><Text style={styles.buttonText}>{t(storeLanguage, "recordDebt")}</Text></Pressable>
                 {paymentDebtId && (() => {
                   const selectedDebt = debts.find((debt) => debt.id === paymentDebtId);
                   if (!selectedDebt) return null;
@@ -246,12 +247,12 @@ export default function HomeScreen() {
                   return <View style={styles.paymentBox}>
                     <Text style={styles.fieldLabel}>دفعة للعميل: {customer?.name ?? selectedDebt.customerId}</Text>
                     <Text style={styles.workspaceMeta}>المتبقي: {((selectedDebt.remainingMinor ?? 0) / 100).toFixed(2)} {selectedDebt.currency}</Text>
-                    <TextInput value={paymentAmount} onChangeText={setPaymentAmount} placeholder="مبلغ الدفعة" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                    <TextInput value={paymentAmount} onChangeText={setPaymentAmount} placeholder=t(storeLanguage, "paymentAmount") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                     <View style={styles.optionRow}>
-                      <Pressable style={styles.option} onPress={() => setPaymentDebtId("")}><Text style={styles.optionText}>إلغاء</Text></Pressable>
+                      <Pressable style={styles.option} onPress={() => setPaymentDebtId("")}><Text style={styles.optionText}>{t(storeLanguage, "cancel")}</Text></Pressable>
                       <Pressable style={[styles.option, styles.optionSelected]} onPress={async () => {
                         const amount = Number(paymentAmount.replace(",", "."));
-                        if (!Number.isFinite(amount) || amount <= 0) { setMessage("مبلغ الدفعة مطلوب"); return; }
+                        if (!Number.isFinite(amount) || amount <= 0) { setMessage(t(storeLanguage, "paymentRequired")); return; }
                         setBusy(true);
                         try {
                           const result = await createPayment({
@@ -264,10 +265,10 @@ export default function HomeScreen() {
                           setDebts(await listDebts(workspace.id));
                           setPaymentAmount("");
                           setPaymentDebtId("");
-                          setMessage(result.replayed ? "تم استرجاع الدفعة السابقة" : "تم تسجيل الدفعة");
-                        } catch (error) { setMessage("تعذر تسجيل الدفعة: " + (error instanceof Error ? error.message : "unknown-error")); }
+                          setMessage(result.replayed ? t(storeLanguage, "paymentReplay") : t(storeLanguage, "paymentCreated"));
+                        } catch (error) { setMessage(t(storeLanguage, "paymentFailed") + ": " + (error instanceof Error ? error.message : "unknown-error")); }
                         finally { setBusy(false); }
-                      }}><Text style={styles.optionText}>تأكيد الدفعة</Text></Pressable>
+                      }}><Text style={styles.optionText}>{t(storeLanguage, "confirmPayment")}</Text></Pressable>
                     </View>
                   </View>;
                 })()}
@@ -280,8 +281,8 @@ export default function HomeScreen() {
                         <Text style={styles.workspaceMeta}>{debt.currency} • {((debt.remainingMinor ?? 0) / 100).toFixed(2)} متبقٍ</Text>
                       </View>
                       <View style={{ alignItems: "flex-end" }}>
-                        <Text style={debt.status === "settled" ? styles.customerActive : styles.workspaceMeta}>{debt.status === "settled" ? "مسدد" : "مفتوح"}</Text>
-                        {debt.status === "open" && <Pressable onPress={() => setPaymentDebtId(debt.id)}><Text style={styles.link}>تسجيل دفعة</Text></Pressable>}
+                        <Text style={debt.status === "settled" ? styles.customerActive : styles.workspaceMeta}>{debt.status === "settled" ? t(storeLanguage, "settled") : t(storeLanguage, "open")}</Text>
+                        {debt.status === "open" && <Pressable onPress={() => setPaymentDebtId(debt.id)}><Text style={styles.link}>{t(storeLanguage, "recordPayment")}</Text></Pressable>}
                       </View>
                     </View>;
                   })}
@@ -289,53 +290,53 @@ export default function HomeScreen() {
               </View>
 
               <View style={styles.profileBox}>
-                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>العملاء</Text>
-                <TextInput value={customerName} onChangeText={setCustomerName} placeholder="اسم العميل *" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t(storeLanguage, "sectionCustomers")}</Text>
+                <TextInput value={customerName} onChangeText={setCustomerName} placeholder=t(storeLanguage, "customerNameRequiredField") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <TextInput value={customerPhone} onChangeText={setCustomerPhone} placeholder="الهاتف" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <TextInput value={customerAddress} onChangeText={setCustomerAddress} placeholder="العنوان" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={customerNotes} onChangeText={setCustomerNotes} placeholder="ملاحظات" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={customerNotes} onChangeText={setCustomerNotes} placeholder=t(storeLanguage, "notes") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
-                  if (!customerName.trim()) { setMessage("اسم العميل مطلوب"); return; }
+                  if (!customerName.trim()) { setMessage(t(storeLanguage, "customerNameRequired")); return; }
                   setBusy(true);
                   try {
                     const created = await createCustomer(workspace.id, { name: customerName, phone: customerPhone, address: customerAddress, notes: customerNotes });
                     setCustomers((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name)));
                     setCustomerName(""); setCustomerPhone(""); setCustomerAddress(""); setCustomerNotes("");
-                    setMessage("تمت إضافة العميل");
+                    setMessage(t(storeLanguage, "customerAdded"));
                   } catch (error) {
-                    setMessage("تعذر إضافة العميل: " + (error instanceof Error ? error.message : "unknown-error"));
+                    setMessage(t(storeLanguage, "customerAddFailed") + ": " + (error instanceof Error ? error.message : "unknown-error"));
                   } finally { setBusy(false); }
                 }}>
-                  <Text style={styles.buttonText}>إضافة عميل</Text>
+                  <Text style={styles.buttonText}>{t(storeLanguage, "addCustomer")}</Text>
                 </Pressable>
                 <View style={styles.customerList}>
-                  {customers.length === 0 ? <Text style={styles.workspaceMeta}>لا يوجد عملاء بعد</Text> :
+                  {customers.length === 0 ? <Text style={styles.workspaceMeta}>{t(storeLanguage, "noCustomers")}</Text> :
                     customers.map((customer) => (
                       <View key={customer.id} style={styles.customerRow}>
                         <View style={styles.customerMain}>
                           <Text style={styles.customerName}>{customer.name}</Text>
                           {!!customer.phone && <Text style={styles.workspaceMeta}>{customer.phone}</Text>}
                         </View>
-                        <Text style={customer.status === "active" ? styles.customerActive : styles.workspaceMeta}>{customer.status === "active" ? "نشط" : "مؤرشف"}</Text>
+                        <Text style={customer.status === "active" ? styles.customerActive : styles.workspaceMeta}>{customer.status === "active" ? t(storeLanguage, "active") : t(storeLanguage, "archived")}</Text>
                       </View>
                     ))}
                 </View>
               </View>
               <View style={styles.profileBox}>
-                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>حركة النقد</Text>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t(storeLanguage, "sectionCash")}</Text>
                 <View style={styles.optionRow}>
-                  <Pressable style={[styles.option, cashDirection === "in" && styles.optionSelected]} onPress={() => setCashDirection("in")}><Text style={styles.optionText}>داخل</Text></Pressable>
-                  <Pressable style={[styles.option, cashDirection === "out" && styles.optionSelected]} onPress={() => setCashDirection("out")}><Text style={styles.optionText}>خارج</Text></Pressable>
+                  <Pressable style={[styles.option, cashDirection === "in" && styles.optionSelected]} onPress={() => setCashDirection("in")}><Text style={styles.optionText}>{t(storeLanguage, "in")}</Text></Pressable>
+                  <Pressable style={[styles.option, cashDirection === "out" && styles.optionSelected]} onPress={() => setCashDirection("out")}><Text style={styles.optionText}>{t(storeLanguage, "out")}</Text></Pressable>
                 </View>
                 <View style={styles.optionRow}>
                   <Pressable style={[styles.option, cashCurrency === "TRY" && styles.optionSelected]} onPress={() => setCashCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
                   <Pressable style={[styles.option, cashCurrency === "USD" && styles.optionSelected]} onPress={() => setCashCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
                 </View>
-                <TextInput value={cashAmount} onChangeText={setCashAmount} placeholder="المبلغ *" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={cashReason} onChangeText={setCashReason} placeholder="السبب *" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={cashAmount} onChangeText={setCashAmount} placeholder=t(storeLanguage, "amountRequiredField") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={cashReason} onChangeText={setCashReason} placeholder=t(storeLanguage, "reasonRequiredField") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                   const amount = Number(cashAmount.replace(",", "."));
-                  if (!Number.isFinite(amount) || amount <= 0 || !cashReason.trim()) { setMessage("المبلغ والسبب مطلوبان"); return; }
+                  if (!Number.isFinite(amount) || amount <= 0 || !cashReason.trim()) { setMessage(t(storeLanguage, "amountReasonRequired")); return; }
                   setBusy(true);
                   try {
                     const result = await createCashMovement({
@@ -349,39 +350,39 @@ export default function HomeScreen() {
                     setCashMovements(await listCashMovements(workspace.id));
                     setCashAmount("");
                     setCashReason("");
-                    setMessage(result.replayed ? "تم استرجاع حركة النقد السابقة" : "تم تسجيل حركة النقد");
+                    setMessage(result.replayed ? t(storeLanguage, "cashReplay") : t(storeLanguage, "cashCreated"));
                   } catch (error) {
-                    setMessage("تعذر تسجيل حركة النقد: " + (error instanceof Error ? error.message : "unknown-error"));
+                    setMessage(t(storeLanguage, "cashFailed") + ": " + (error instanceof Error ? error.message : "unknown-error"));
                   } finally { setBusy(false); }
-                }}><Text style={styles.buttonText}>تسجيل حركة نقد</Text></Pressable>
+                }}><Text style={styles.buttonText}>{t(storeLanguage, "recordCash")}</Text></Pressable>
                 <View style={styles.customerList}>
                   {cashMovements.map((movement) => (
                     <View key={movement.id} style={styles.customerRow}>
                       <View style={styles.customerMain}>
-                        <Text style={styles.customerName}>{movement.direction === "in" ? "داخل" : "خارج"} • {movement.reason}</Text>
+                        <Text style={styles.customerName}>{movement.direction === "in" ? t(storeLanguage, "in") : t(storeLanguage, "out")} • {movement.reason}</Text>
                         <Text style={styles.workspaceMeta}>{movement.currency} • {(movement.amountMinor / 100).toFixed(2)}</Text>
                       </View>
                     </View>
                   ))}
-                  {cashMovements.length === 0 && <Text style={styles.workspaceMeta}>لا توجد حركات نقد بعد</Text>}
+                  {cashMovements.length === 0 && <Text style={styles.workspaceMeta}>{t(storeLanguage, "noCash")}</Text>}
                 </View>
               </View>
 
               <View style={styles.profileBox}>
-                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>السجل المالي</Text>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t(storeLanguage, "sectionJournal")}</Text>
                 <View style={styles.optionRow}>
-                  <Pressable style={[styles.option, journalDirection === "in" && styles.optionSelected]} onPress={() => setJournalDirection("in")}><Text style={styles.optionText}>داخل</Text></Pressable>
-                  <Pressable style={[styles.option, journalDirection === "out" && styles.optionSelected]} onPress={() => setJournalDirection("out")}><Text style={styles.optionText}>خارج</Text></Pressable>
+                  <Pressable style={[styles.option, journalDirection === "in" && styles.optionSelected]} onPress={() => setJournalDirection("in")}><Text style={styles.optionText}>{t(storeLanguage, "in")}</Text></Pressable>
+                  <Pressable style={[styles.option, journalDirection === "out" && styles.optionSelected]} onPress={() => setJournalDirection("out")}><Text style={styles.optionText}>{t(storeLanguage, "out")}</Text></Pressable>
                 </View>
                 <View style={styles.optionRow}>
                   <Pressable style={[styles.option, journalCurrency === "TRY" && styles.optionSelected]} onPress={() => setJournalCurrency("TRY")}><Text style={styles.optionText}>TRY</Text></Pressable>
                   <Pressable style={[styles.option, journalCurrency === "USD" && styles.optionSelected]} onPress={() => setJournalCurrency("USD")}><Text style={styles.optionText}>USD</Text></Pressable>
                 </View>
-                <TextInput value={journalAmount} onChangeText={setJournalAmount} placeholder="المبلغ *" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={journalReason} onChangeText={setJournalReason} placeholder="السبب *" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={journalAmount} onChangeText={setJournalAmount} placeholder=t(storeLanguage, "amountRequiredField") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={journalReason} onChangeText={setJournalReason} placeholder=t(storeLanguage, "reasonRequiredField") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                   const amount = Number(journalAmount.replace(",", "."));
-                  if (!Number.isFinite(amount) || amount <= 0 || !journalReason.trim()) { setMessage("المبلغ والسبب مطلوبان"); return; }
+                  if (!Number.isFinite(amount) || amount <= 0 || !journalReason.trim()) { setMessage(t(storeLanguage, "amountReasonRequired")); return; }
                   setBusy(true);
                   try {
                     const result = await createJournalEntry({
@@ -395,34 +396,34 @@ export default function HomeScreen() {
                     setJournalEntries(await listJournalEntries(workspace.id));
                     setJournalAmount("");
                     setJournalReason("");
-                    setMessage(result.replayed ? "تم استرجاع القيد السابق" : "تم تسجيل القيد");
+                    setMessage(result.replayed ? t(storeLanguage, "journalReplay") : t(storeLanguage, "journalCreated"));
                   } catch (error) {
-                    setMessage("تعذر تسجيل القيد: " + (error instanceof Error ? error.message : "unknown-error"));
+                    setMessage(t(storeLanguage, "journalFailed") + ": " + (error instanceof Error ? error.message : "unknown-error"));
                   } finally { setBusy(false); }
-                }}><Text style={styles.buttonText}>تسجيل قيد</Text></Pressable>
+                }}><Text style={styles.buttonText}>{t(storeLanguage, "recordJournal")}</Text></Pressable>
                 <View style={styles.customerList}>
                   {journalEntries.map((entry) => (
                     <View key={entry.id} style={styles.customerRow}>
                       <View style={styles.customerMain}>
-                        <Text style={styles.customerName}>{entry.direction === "in" ? "داخل" : "خارج"} • {entry.reason}</Text>
+                        <Text style={styles.customerName}>{entry.direction === "in" ? t(storeLanguage, "in") : t(storeLanguage, "out")} • {entry.reason}</Text>
                         <Text style={styles.workspaceMeta}>{entry.currency} • {(entry.amountMinor / 100).toFixed(2)}</Text>
                       </View>
                     </View>
                   ))}
-                  {journalEntries.length === 0 && <Text style={styles.workspaceMeta}>لا توجد قيود بعد</Text>}
+                  {journalEntries.length === 0 && <Text style={styles.workspaceMeta}>{t(storeLanguage, "noJournal")}</Text>}
                 </View>
               </View>
 
               <View style={styles.profileBox}>
-                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>إغلاق اليوم</Text>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t(storeLanguage, "sectionClosing")}</Text>
                 {workspace.role === "owner" || workspace.role === "admin" ? <>
-                  <TextInput value={closingTry} onChangeText={setClosingTry} placeholder="الرصيد الفعلي TRY" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                  <TextInput value={closingUsd} onChangeText={setClosingUsd} placeholder="الرصيد الفعلي USD (اختياري)" placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                  <TextInput value={closingTry} onChangeText={setClosingTry} placeholder=t(storeLanguage, "actualTry") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                  <TextInput value={closingUsd} onChangeText={setClosingUsd} placeholder=t(storeLanguage, "actualUsd") placeholderTextColor="#7f8790" keyboardType="decimal-pad" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                   <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
                     const tryAmount = Number(closingTry.replace(",", "."));
                     const usdAmount = closingUsd.trim() ? Number(closingUsd.replace(",", ".")) : 0;
                     if (!Number.isFinite(tryAmount) || tryAmount < 0 || !Number.isFinite(usdAmount) || usdAmount < 0 || (!closingTry.trim() && !closingUsd.trim())) {
-                      setMessage("أدخل رصيدًا صحيحًا واحدًا على الأقل");
+                      setMessage(t(storeLanguage, "balanceRequired"));
                       return;
                     }
                     setBusy(true);
@@ -440,12 +441,12 @@ export default function HomeScreen() {
                       setDailyClosings(await listDailyClosings(workspace.id));
                       setClosingTry("");
                       setClosingUsd("");
-                      setMessage(result.replayed ? "تم استرجاع إغلاق اليوم السابق" : "تم إغلاق اليوم");
+                      setMessage(result.replayed ? t(storeLanguage, "closingReplay") : t(storeLanguage, "closedDay"));
                     } catch (error) {
-                      setMessage("تعذر إغلاق اليوم: " + (error instanceof Error ? error.message : "unknown-error"));
+                      setMessage(t(storeLanguage, "closingFailed") + ": " + (error instanceof Error ? error.message : "unknown-error"));
                     } finally { setBusy(false); }
-                  }}><Text style={styles.buttonText}>إغلاق اليوم</Text></Pressable>
-                </> : <Text style={styles.workspaceMeta}>إغلاق اليوم متاح للمالك والمدير فقط</Text>}
+                  }}><Text style={styles.buttonText}>{t(storeLanguage, "sectionClosing")}</Text></Pressable>
+                </> : <Text style={styles.workspaceMeta}>{t(storeLanguage, "ownerAdminOnly")}</Text>}
                 <View style={styles.customerList}>
                   {dailyClosings.slice(0, 5).map((closing) => (
                     <View key={closing.id} style={styles.customerRow}>
@@ -459,19 +460,19 @@ export default function HomeScreen() {
                       </View>
                     </View>
                   ))}
-                  {dailyClosings.length === 0 && <Text style={styles.workspaceMeta}>لا توجد أيام مغلقة بعد</Text>}
+                  {dailyClosings.length === 0 && <Text style={styles.workspaceMeta}>{t(storeLanguage, "noClosings")}</Text>}
                 </View>
               </View>
 
               <View style={styles.profileBox}>
-                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>التذكيرات</Text>
-                <TextInput value={reminderTitle} onChangeText={setReminderTitle} placeholder="عنوان التذكير *" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={reminderNote} onChangeText={setReminderNote} placeholder="ملاحظة (اختياري)" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
-                <TextInput value={reminderDueAt} onChangeText={setReminderDueAt} placeholder="الموعد: 2026-10-08T15:30" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t(storeLanguage, "sectionReminders")}</Text>
+                <TextInput value={reminderTitle} onChangeText={setReminderTitle} placeholder=t(storeLanguage, "reminderTitleField") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={reminderNote} onChangeText={setReminderNote} placeholder=t(storeLanguage, "reminderNoteField") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={reminderDueAt} onChangeText={setReminderDueAt} placeholder=t(storeLanguage, "reminderDuePlaceholder") placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
                 <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy} onPress={async () => {
-                  if (!reminderTitle.trim()) { setMessage("عنوان التذكير مطلوب"); return; }
+                  if (!reminderTitle.trim()) { setMessage(t(storeLanguage, "reminderTitleRequired")); return; }
                   const dueAtMs = Date.parse(reminderDueAt.trim());
-                  if (!Number.isFinite(dueAtMs) || dueAtMs <= Date.now()) { setMessage("أدخل موعدًا مستقبليًا صحيحًا"); return; }
+                  if (!Number.isFinite(dueAtMs) || dueAtMs <= Date.now()) { setMessage(t(storeLanguage, "reminderFutureRequired")); return; }
                   setBusy(true);
                   try {
                     const result = await createReminder({
@@ -485,11 +486,11 @@ export default function HomeScreen() {
                     setReminderTitle("");
                     setReminderNote("");
                     setReminderDueAt("");
-                    setMessage(result.replayed ? "تم استرجاع التذكير السابق" : "تم إنشاء التذكير");
+                    setMessage(result.replayed ? t(storeLanguage, "reminderReplay") : t(storeLanguage, "reminderCreated"));
                   } catch (error) {
-                    setMessage("تعذر إنشاء التذكير: " + (error instanceof Error ? error.message : "unknown-error"));
+                    setMessage(t(storeLanguage, "reminderFailed") + ": " + (error instanceof Error ? error.message : "unknown-error"));
                   } finally { setBusy(false); }
-                }}><Text style={styles.buttonText}>إضافة تذكير</Text></Pressable>
+                }}><Text style={styles.buttonText}>{t(storeLanguage, "addReminder")}</Text></Pressable>
                 <View style={styles.customerList}>
                   {reminders.slice(0, 10).map((reminder) => (
                     <View key={reminder.id} style={styles.customerRow}>
@@ -499,13 +500,13 @@ export default function HomeScreen() {
                       </View>
                     </View>
                   ))}
-                  {reminders.length === 0 && <Text style={styles.workspaceMeta}>لا توجد تذكيرات بعد</Text>}
+                  {reminders.length === 0 && <Text style={styles.workspaceMeta}>{t(storeLanguage, "noReminders")}</Text>}
                 </View>
               </View>
 
               <View style={styles.profileBox}>
-                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>الأرشيف</Text>
-                <Text style={styles.workspaceMeta}>السجلات المؤرشفة تُحفظ هنا للقراءة فقط.</Text>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t(storeLanguage, "sectionArchive")}</Text>
+                <Text style={styles.workspaceMeta}>{t(storeLanguage, "archiveReadOnly")}</Text>
                 <View style={styles.customerList}>
                   {archiveRecords.slice(0, 10).map((record) => (
                     <View key={record.id} style={styles.customerRow}>
@@ -515,7 +516,7 @@ export default function HomeScreen() {
                       </View>
                     </View>
                   ))}
-                  {archiveRecords.length === 0 && <Text style={styles.workspaceMeta}>لا توجد سجلات مؤرشفة بعد</Text>}
+                  {archiveRecords.length === 0 && <Text style={styles.workspaceMeta}>{t(storeLanguage, "noArchive")}</Text>}
                 </View>
               </View>
 
@@ -773,9 +774,12 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: "center",
+    flexGrow: 1,
     padding: 24,
+    backgroundColor: "#111315",
+  },
+  scrollView: {
+    flex: 1,
     backgroundColor: "#111315",
   },
   title: {
