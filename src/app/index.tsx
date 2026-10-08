@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { firebaseAuth } from "@/lib/firebase";
 import { isRTL, t, type AppLanguage } from "@/lib/i18n";
+import { createCustomer, listCustomers, type Customer } from "@/lib/customers";
 import {
   getStoreProfile,
   saveStoreProfile,
@@ -44,6 +45,11 @@ export default function HomeScreen() {
   const [storeCurrency, setStoreCurrency] = useState<StoreCurrency>("TRY");
   const [storeLanguage, setStoreLanguage] = useState<AppLanguage>("ar");
   const [profileSaved, setProfileSaved] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerNotes, setCustomerNotes] = useState("");
 
   const rtl = isRTL(storeLanguage);
 
@@ -57,6 +63,10 @@ export default function HomeScreen() {
       try {
         const activeWorkspace = await getActiveWorkspaceForCurrentUser();
         setWorkspace(activeWorkspace);
+        if (activeWorkspace) {
+          try { setCustomers(await listCustomers(activeWorkspace.id)); }
+          catch (error) { setMessage("تعذر قراءة العملاء: " + (error instanceof Error ? error.message : "unknown-error")); }
+        }
 
         if (activeWorkspace) {
           try {
@@ -162,6 +172,40 @@ export default function HomeScreen() {
                 </Text>
               </View>
 
+
+              <View style={styles.profileBox}>
+                <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>العملاء</Text>
+                <TextInput value={customerName} onChangeText={setCustomerName} placeholder="اسم العميل *" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={customerPhone} onChangeText={setCustomerPhone} placeholder="الهاتف" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={customerAddress} onChangeText={setCustomerAddress} placeholder="العنوان" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <TextInput value={customerNotes} onChangeText={setCustomerNotes} placeholder="ملاحظات" placeholderTextColor="#7f8790" style={[styles.input, { textAlign: rtl ? "right" : "left" }]} />
+                <Pressable style={[styles.button, busy && styles.disabled]} disabled={busy || workspace.role === "staff"} onPress={async () => {
+                  if (!customerName.trim()) { setMessage("اسم العميل مطلوب"); return; }
+                  setBusy(true);
+                  try {
+                    const created = await createCustomer(workspace.id, { name: customerName, phone: customerPhone, address: customerAddress, notes: customerNotes });
+                    setCustomers((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name)));
+                    setCustomerName(""); setCustomerPhone(""); setCustomerAddress(""); setCustomerNotes("");
+                    setMessage("تمت إضافة العميل");
+                  } catch (error) {
+                    setMessage("تعذر إضافة العميل: " + (error instanceof Error ? error.message : "unknown-error"));
+                  } finally { setBusy(false); }
+                }}>
+                  <Text style={styles.buttonText}>إضافة عميل</Text>
+                </Pressable>
+                <View style={styles.customerList}>
+                  {customers.length === 0 ? <Text style={styles.workspaceMeta}>لا يوجد عملاء بعد</Text> :
+                    customers.map((customer) => (
+                      <View key={customer.id} style={styles.customerRow}>
+                        <View style={styles.customerMain}>
+                          <Text style={styles.customerName}>{customer.name}</Text>
+                          {!!customer.phone && <Text style={styles.workspaceMeta}>{customer.phone}</Text>}
+                        </View>
+                        <Text style={customer.status === "active" ? styles.customerActive : styles.workspaceMeta}>{customer.status === "active" ? "نشط" : "مؤرشف"}</Text>
+                      </View>
+                    ))}
+                </View>
+              </View>
               <View style={styles.profileBox}>
                 <Text
                   style={[
@@ -566,6 +610,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center",
   },
+  customerList: { marginTop: 14, gap: 8 },
+  customerRow: { minHeight: 56, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: "#30363d", backgroundColor: "#191c20", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  customerMain: { flex: 1 },
+  customerName: { color: "#ffffff", fontSize: 15, fontWeight: "700" },
+  customerActive: { color: "#75d69c", fontSize: 12, fontWeight: "600" },
   message: {
     color: "#e1e5e9",
     fontSize: 13,
