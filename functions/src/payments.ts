@@ -45,7 +45,7 @@ export async function createPaymentCommand(uid: string, data: unknown) {
       const receiptData = receipt.data() ?? {};
       const paymentId = receiptData.paymentId;
       if (receiptData.type !== "createPayment" || receiptData.debtId !== debtId || receiptData.currency !== currency || receiptData.amountMinor !== amountMinor || typeof paymentId !== "string") {
-        throw new HttpsError("internal", "invalid-operation-receipt");
+        throw new HttpsError("already-exists", "idempotency-key-conflict");
       }
       const existing = await tx.get(
         db.doc(`workspaces/${workspaceId}/payments/${paymentId}`),
@@ -74,6 +74,9 @@ export async function createPaymentCommand(uid: string, data: unknown) {
 
     if (debt.workspaceId !== workspaceId || debt.schemaVersion !== 1) {
       throw new HttpsError("failed-precondition", "invalid-debt");
+    }
+    if (!validAmount(debt.amountMinor) || !Number.isSafeInteger(debt.paidMinor) || debt.paidMinor < 0 || !validAmount(debt.remainingMinor) || debt.amountMinor !== debt.paidMinor + debt.remainingMinor) {
+      throw new HttpsError("failed-precondition", "invalid-debt-balance");
     }
     if (debt.currency !== currency) {
       throw new HttpsError("failed-precondition", "currency-mismatch");
@@ -117,6 +120,10 @@ export async function createPaymentCommand(uid: string, data: unknown) {
 
     tx.create(paymentRef, payment);
     tx.create(cashRef, cashMovement);
+    tx.create(db.doc(`workspaces/${workspaceId}/auditEvents/${paymentRef.id}`), {
+      schemaVersion: 1, type: "createPayment", uid, workspaceId, entityId: paymentRef.id,
+      debtId, amountMinor, currency, createdAt: now,
+    });
     tx.update(debtRef, {
       paidMinor: newPaid,
       remainingMinor: newRemaining,

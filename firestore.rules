@@ -225,6 +225,12 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /workspaces/{workspaceId}/auditEvents/{eventId} {
+      allow read: if isCurrentUserMember(workspaceId)
+        && get(memberPath(workspaceId, request.auth.uid)).data.role in ["owner", "admin"];
+      allow create, update, delete: if false;
+    }
+
     match /workspaces/{workspaceId}/operationReceipts/{receiptId} {
       allow read, write: if false;
     }
