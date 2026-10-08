@@ -188,7 +188,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView style={styles.scrollView} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} direction={rtl ? "rtl" : "ltr"}>
+    <ScrollView style={[styles.scrollView, { direction: rtl ? "rtl" : "ltr" }]} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>{t(storeLanguage, "title")}</Text>
       <Text style={styles.subtitle}>{t(storeLanguage, "subtitle")}</Text>
 
