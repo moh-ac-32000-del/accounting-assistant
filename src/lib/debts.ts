@@ -1,3 +1,6 @@
+import { collection, getDocs } from "firebase/firestore";
+import { firestoreDb } from "@/lib/firebase";
+
 export type DebtStatus = "open" | "settled";
 
 export type Debt = {
@@ -29,5 +32,11 @@ export type CreateDebtResult = {
   replayed: boolean;
 };
 
+export async function listDebts(workspaceId: string): Promise<Debt[]> {
+  const snapshot = await getDocs(collection(firestoreDb, "workspaces", workspaceId, "debts"));
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() } as Debt))
+    .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
+}
+
 // Financial writes are intentionally exposed through the trusted backend only.
-// This module contains the shared client-side contract, not a direct Firestore write path.
