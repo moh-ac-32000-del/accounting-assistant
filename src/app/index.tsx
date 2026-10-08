@@ -19,7 +19,7 @@ import { firebaseAuth } from "@/lib/firebase";
 import { isRTL, t, type AppLanguage } from "@/lib/i18n";
 import { createCustomer, listCustomers, type Customer } from "@/lib/customers";
 import { listDebts, type Debt } from "@/lib/debts";
-import { archiveRecord, closeDay, createCashMovement, createDebt, createJournalEntry, createPayment, createReminder } from "@/lib/backend";
+import { closeDay, createCashMovement, createDebt, createJournalEntry, createPayment, createReminder } from "@/lib/backend";
 import { listCashMovements, type CashMovement } from "@/lib/cash";
 import { listJournalEntries, type JournalEntry } from "@/lib/journal";
 import { listDailyClosings, type DailyClosing } from "@/lib/closing";
