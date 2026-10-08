@@ -45,6 +45,23 @@ export async function createCashMovementCommand(uid: string, data: unknown) {
       return { ok: true as const, movement: existing.data(), replayed: true };
     }
 
+    const balanceRef = db.doc(`workspaces/${workspaceId}/cashBalances/${currency}`);
+    const balanceSnapshot = await tx.get(balanceRef);
+    const currentBalance = balanceSnapshot.exists ? (balanceSnapshot.data()?.balanceMinor as number) : 0;
+    if (!Number.isSafeInteger(currentBalance) || currentBalance < 0) {
+      throw new HttpsError("failed-precondition", "invalid-cash-balance");
+    }
+    if (direction === "out" && amountMinor > currentBalance) {
+      throw new HttpsError("failed-precondition", "insufficient-cash-balance");
+    }
+
+    const newBalance = direction === "in"
+      ? currentBalance + amountMinor
+      : currentBalance - amountMinor;
+    if (!Number.isSafeInteger(newBalance) || newBalance < 0) {
+      throw new HttpsError("failed-precondition", "invalid-cash-balance");
+    }
+
     const now = Timestamp.now();
     const movement = {
       id: movementRef.id,
@@ -59,6 +76,13 @@ export async function createCashMovementCommand(uid: string, data: unknown) {
     };
 
     tx.create(movementRef, movement);
+    tx.set(balanceRef, {
+      schemaVersion: 1,
+      workspaceId,
+      currency,
+      balanceMinor: newBalance,
+      updatedAt: now,
+    }, { merge: true });
     tx.create(db.doc(`workspaces/${workspaceId}/auditEvents/${movementRef.id}`), {
       schemaVersion: 1, type: "createCashMovement", uid, workspaceId, entityId: movementRef.id,
       direction, amountMinor, currency, reason, createdAt: now,

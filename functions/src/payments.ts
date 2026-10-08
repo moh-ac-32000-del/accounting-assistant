@@ -104,6 +104,13 @@ export async function createPaymentCommand(uid: string, data: unknown) {
       createdAt: now,
     };
 
+    const cashBalanceRef = db.doc(`workspaces/${workspaceId}/cashBalances/${currency}`);
+    const cashBalanceSnapshot = await tx.get(cashBalanceRef);
+    const currentCashBalance = cashBalanceSnapshot.exists ? (cashBalanceSnapshot.data()?.balanceMinor as number) : 0;
+    if (!Number.isSafeInteger(currentCashBalance) || currentCashBalance < 0) throw new HttpsError("failed-precondition", "invalid-cash-balance");
+    const newCashBalance = currentCashBalance + amountMinor;
+    if (!Number.isSafeInteger(newCashBalance)) throw new HttpsError("failed-precondition", "invalid-cash-balance");
+
     const cashRef = db.doc(`workspaces/${workspaceId}/cashMovements/payment_${paymentRef.id}`);
     const cashMovement = {
       id: cashRef.id,
@@ -120,6 +127,13 @@ export async function createPaymentCommand(uid: string, data: unknown) {
 
     tx.create(paymentRef, payment);
     tx.create(cashRef, cashMovement);
+    tx.set(cashBalanceRef, {
+      schemaVersion: 1,
+      workspaceId,
+      currency,
+      balanceMinor: newCashBalance,
+      updatedAt: now,
+    }, { merge: true });
     tx.create(db.doc(`workspaces/${workspaceId}/auditEvents/${paymentRef.id}`), {
       schemaVersion: 1, type: "createPayment", uid, workspaceId, entityId: paymentRef.id,
       debtId, amountMinor, currency, createdAt: now,

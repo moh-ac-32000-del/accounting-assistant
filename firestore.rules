@@ -215,6 +215,11 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /workspaces/{workspaceId}/cashBalances/{currency} {
+      allow read: if isCurrentUserMember(workspaceId);
+      allow create, update, delete: if false;
+    }
+
     match /workspaces/{workspaceId}/cashMovements/{movementId} {
       allow read: if isCurrentUserMember(workspaceId);
       allow create, update, delete: if false;
