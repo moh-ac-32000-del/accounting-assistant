@@ -39,6 +39,7 @@ import {
 export default function HomeScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [storeLanguage, setStoreLanguage] = useState<AppLanguage>("ar");
   const [workspaceName, setWorkspaceName] = useState(t("ar", "storeDefault"));
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
