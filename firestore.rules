@@ -231,6 +231,11 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /workspaces/{workspaceId}/dailyClosings/{closingId} {
+      allow read: if isCurrentUserMember(workspaceId);
+      allow create, update, delete: if false;
+    }
+
     match /workspaces/{workspaceId}/journalEntries/{entryId} {
       allow read: if isCurrentUserMember(workspaceId);
       allow create, update, delete: if false;
