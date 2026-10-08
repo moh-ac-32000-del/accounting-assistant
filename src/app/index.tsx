@@ -52,7 +52,6 @@ export default function HomeScreen() {
   const [storePhone, setStorePhone] = useState("");
   const [storeAddress, setStoreAddress] = useState("");
   const [storeCurrency, setStoreCurrency] = useState<StoreCurrency>("TRY");
-  const [storeLanguage, setStoreLanguage] = useState<AppLanguage>("ar");
   const [profileSaved, setProfileSaved] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerName, setCustomerName] = useState("");
@@ -454,9 +453,9 @@ export default function HomeScreen() {
                       <View style={styles.customerMain}>
                         <Text style={styles.customerName}>{closing.closingDate}</Text>
                         <Text style={styles.workspaceMeta}>
-                          {closing.countedBalances.TRY !== undefined ? "TRY • " + (closing.balances.TRY / 100).toFixed(2) : ""}
-                          {closing.balances.TRY !== undefined && closing.countedBalances.USD !== undefined ? "   " : ""}
-                          {closing.balances.USD !== undefined ? "USD • " + (closing.balances.USD / 100).toFixed(2) : ""}
+                          {closing.countedBalances.TRY !== undefined ? "TRY • " + (closing.countedBalances.TRY / 100).toFixed(2) : ""}
+                          {closing.countedBalances.TRY !== undefined && closing.countedBalances.USD !== undefined ? "   " : ""}
+                          {closing.countedBalances.USD !== undefined ? "USD • " + (closing.countedBalances.USD / 100).toFixed(2) : ""}
                         </Text>
                       </View>
                     </View>
