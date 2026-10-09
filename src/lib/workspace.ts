@@ -135,6 +135,16 @@ export async function getActiveWorkspaceForCurrentUser(): Promise<WorkspaceSumma
   const workspace = workspaceSnapshot.data() as WorkspaceDoc;
   const member = memberSnapshot.data() as MembershipDoc;
 
+  // Never treat suspended workspaces or memberships as an active session.
+  if (
+    workspace.status !== "active" ||
+    member.status !== "active" ||
+    member.uid !== uid ||
+    !["owner", "admin", "staff"].includes(member.role)
+  ) {
+    return null;
+  }
+
   return {
     id: workspaceSnapshot.id,
     name: workspace.name,
